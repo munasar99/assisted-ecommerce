@@ -1,0 +1,26 @@
+{
+  "MongoDb": {
+    "ConnectionString": "mongodb+srv://assistedecommerce:YOUR_PASSWORD@cluster0.ienf6zz.mongodb.net/?retryWrites=true&w=majority",
+    "DatabaseName": "ubaxsana"
+  },
+  "Cloudinary": {
+    "CloudName": "ddtkqzg25",
+    "ApiKey": "476644532329239",
+    "ApiSecret": "YOUR_API_SECRET",
+    "Folder": "assisted-ecommerce"
+  },
+  "Resend": {
+    "Enabled": true,
+    "ApiKey": "re_YOUR_RESEND_API_KEY",
+    "FromEmail": "E-commerce@gmi.so",
+    "FromName": "Assisted E-commerce",
+    "SendEmailOnOrderCreated": true,
+    "SendEmailOnPaymentSubmitted": true,
+    "UseDevelopmentRedirect": false,
+    "DevelopmentRedirectTo": "",
+    "Templates": {
+      "OrderSubmittedSubject": "Waad ku mahadsan tahay — Dalabka {orderId} waa la helay",
+      "OrderSubmittedHtml": "<p>Salam <strong>{customerName}</strong>,</p><p>Dalabkaaga iyo lacagtaada waa la helay. Wadarta: {totalAmount}</p>"
+    }
+  }
+}

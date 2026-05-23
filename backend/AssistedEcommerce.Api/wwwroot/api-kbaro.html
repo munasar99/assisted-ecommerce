@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>API Kbaro — Assisted E-commerce</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --brand:#14b8a6; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, Segoe UI, sans-serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
+    header { background: linear-gradient(135deg,#0d9488,#0369a1); padding: 2rem 1.5rem; }
+    header h1 { margin: 0 0 .5rem; font-size: 1.75rem; }
+    header p { margin: 0; opacity: .9; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+    .alert { background: #451a1a; border: 1px solid var(--bad); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .alert strong { color: var(--bad); }
+    .tip { background: #14532d; border: 1px solid var(--ok); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .card { background: var(--card); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; border: 1px solid #334155; }
+    .card h2 { margin-top: 0; color: var(--brand); font-size: 1.1rem; }
+    .method { display: inline-block; font-weight: 700; font-size: .75rem; padding: .2rem .5rem; border-radius: 6px; margin-right: .5rem; }
+    .GET { background: #1d4ed8; }
+    .POST { background: #15803d; }
+    .PUT { background: #b45309; }
+    .DELETE { background: #b91c1c; }
+    .PATCH { background: #7c3aed; }
+    pre { background: #0b1220; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: .85rem; border: 1px solid #334155; }
+    code { font-family: Consolas, monospace; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { text-align: left; padding: .6rem; border-bottom: 1px solid #334155; }
+    th { color: var(--muted); }
+    a { color: var(--brand); }
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li { counter-increment: step; margin-bottom: .75rem; padding-left: 2.5rem; position: relative; }
+    .steps li::before { content: counter(step); position: absolute; left: 0; width: 1.75rem; height: 1.75rem; background: var(--brand); color: #042f2e; border-radius: 50%; text-align: center; font-weight: 700; line-height: 1.75rem; font-size: .85rem; }
+    .wrong { text-decoration: line-through; color: var(--bad); }
+    .right { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>API Kbaro (Barashada API)</h1>
+      <p>Thunder Client / Postman — tijaabo toos ah MongoDB</p>
+      <p><strong>Base URL:</strong> <code id="base">http://localhost:5298</code> &nbsp;|&nbsp;
+        <a href="/swagger">Swagger</a> &nbsp;|&nbsp;
+        <a href="/api/health">Health</a>
+      </p>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="alert">
+      <strong>Qaladka sawirkaaga (Invalid URL):</strong><br>
+      Dropdown-ka wuxuu ahaa <span class="wrong">GET</span> laakiin URL-ka waxaad ku qortay
+      <code class="wrong">PUT http://localhost:5298/...</code><br><br>
+      <span class="right">✓ Sax:</span> Dropdown-ka dooro <strong>PUT</strong> — URL-ka geli <strong>kaliya</strong>:
+      <code>http://localhost:5298/api/orders/ORD-001-03</code> (erayga PUT ha ku jirin URL-ka dhexdiisa!)
+    </div>
+
+    <div class="tip">
+      <strong>1.</strong> API kici: <code>dotnet run</code> gudaha <code>AssistedEcommerce.Api</code><br>
+      <strong>2.</strong> Boggan fur: <code>http://localhost:5298/api-kbaro</code><br>
+      <strong>3.</strong> Fur <code>API-KBARO.http</code> — riix "Send Request" (JSON diyaar)
+    </div>
+
+    <div class="card">
+      <h2>Thunder Client — 4 goobood</h2>
+      <table>
+        <tr><th>Goob</th><th>Maxaa gelisaa</th></tr>
+        <tr><td>1. Method (dropdown)</td><td>GET, POST, PUT, ama DELETE — <strong>hal dooro</strong></td></tr>
+        <tr><td>2. URL (bar)</td><td><strong>Kaliya</strong> http://localhost:5298/api/... — <strong>MA</strong> ku dar GET/PUT halkan</td></tr>
+        <tr><td>3. Body tab</td><td>POST iyo PUT: JSON ON. GET iyo DELETE: Body <strong>OFF / madhan</strong></td></tr>
+        <tr><td>4. Auth tab</td><td><strong>Admin:</strong> Login → Bearer token (waa lagama maarmaan)</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2><span class="method POST">POST</span> Order geli (data cusub)</h2>
+      <p><strong>URL:</strong> <code>http://localhost:5298/api/orders</code></p>
+      <p>Body: JSON ON — koobi-geli:</p>
+      <pre><code>{
+  "fullName": "jaamac ali",
+  "phone": "+25267889855",
+  "productUrl": "https://www.alibaba.com/example",
+  "productName": "miis",
+  "productUnitPriceUsd": 20,
+  "quantity": 4,
+  "deliveryType": "HomeDelivery",
+  "districtId": "ZONE-HODAN",
+  "addressDetail": "abdicasiis, Muqdisho"
+}</code></pre>
+      <p><strong>Pickup:</strong> <code>"deliveryType": "Pickup"</code> — <strong>ha ku darin</strong> districtId</p>
+      <p>Jawaabta ka qor <strong>orderId</strong> (tusaale ORD-001-03) — talaabada xigta!</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="method GET">GET</span> Liiska orders (akhri)</h2>
+      <p><strong>URL:</strong> <code>http://localhost:5298/api/orders?page=1</code></p>
+      <p><strong>Body:</strong> madhan / OFF</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="method GET">GET</span> Hal order</h2>
+      <p><strong>URL:</strong> <code>http://localhost:5298/api/orders/ORD-001-03</code></p>
+      <p class="wrong">Qalad: .../orders/{orderId} &nbsp;|&nbsp; <span class="right">Sax: ID dhab ah</span></p>
+      <p><strong>Body:</strong> madhan</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="method PUT">PUT</span> Beddel order</h2>
+      <ol class="steps">
+        <li>Dropdown: dooro <strong>PUT</strong> (ma aha GET)</li>
+        <li>URL: <code>http://localhost:5298/api/orders/ORD-001-03</code> — PUT ha ku qorin!</li>
+        <li>Body JSON (waxaad beddeshay oo keliya):</li>
+      </ol>
+      <pre><code>{
+  "productName": "miis cusub",
+  "quantity": 4,
+  "notes": "updated"
+}</code></pre>
+      <p class="wrong">Qalad: safka 1aad <code>POST http://localhost:5298/api/orders</code> — JSON ma noqon karo!</p>
+      <p><strong>Pickup (Tabo):</strong> PUT — <code>{ "deliveryType": "Pickup" }</code> — districtId ma loo baahna</p>
+      <p><strong>Home delivery:</strong> PUT — <code>{ "deliveryType": "HomeDelivery", "districtId": "ZONE-HODAN" }</code></p>
+    </div>
+
+    <div class="card">
+      <h2><span class="method DELETE">DELETE</span> Tirtir order</h2>
+      <p><strong>URL:</strong> <code>http://localhost:5298/api/orders/ORD-001-03</code></p>
+      <p><strong>Body:</strong> madhan</p>
+    </div>
+
+    <div class="card">
+      <h2>Login (haddii 401)</h2>
+      <p><span class="method POST">POST</span> <code>http://localhost:5298/api/auth/login</code></p>
+      <pre><code>{ "email": "admin@assisted.local", "password": "Admin@123" }</code></pre>
+      <p>Jawaab: <code>data.accessToken</code> → Auth → Bearer → paste</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="method POST">POST</span> Invoice (admin)</h2>
+      <p><code>http://localhost:5298/api/orders/ORD-001-01/invoice</code></p>
+      <pre><code>{
+  "productCost": 80,
+  "serviceFee": 8,
+  "otherCharges": 0
+}</code></pre>
+      <p>GET order → <code>data.invoiceId</code> (tusaale INV-2026-0001)</p>
+    </div>
+
+    <div class="card">
+      <h2>Dhammaan API links + JSON (koobi-geli Thunder)</h2>
+      <table>
+        <tr><th>API</th><th>Link</th><th>JSON body (haddii loo baahdo)</th></tr>
+        <tr><td><span class="method POST">POST</span> Login</td><td>/api/auth/login</td><td>{ "email":"admin@assisted.local", "password":"Admin@123" }</td></tr>
+        <tr><td><span class="method GET">GET</span> Degmo 18</td><td>/api/delivery/zones/active</td><td>—</td></tr>
+        <tr><td><span class="method POST">POST</span> Order Home</td><td>/api/orders</td><td>fullName, phone, productUrl, quantity, productUnitPriceUsd, deliveryType:"HomeDelivery", districtId, addressDetail</td></tr>
+        <tr><td><span class="method POST">POST</span> Order Pickup</td><td>/api/orders</td><td>… deliveryType:"Pickup" (districtId ma jiro)</td></tr>
+        <tr><td><span class="method GET">GET</span> Orders</td><td>/api/orders?page=1</td><td>—</td></tr>
+        <tr><td><span class="method GET">GET</span> Order</td><td>/api/orders/ORD-xxx</td><td>—</td></tr>
+        <tr><td><span class="method PUT">PUT</span> Order</td><td>/api/orders/ORD-xxx</td><td>{ "deliveryType":"Pickup" } ama fields kale</td></tr>
+        <tr><td><span class="method PATCH">PATCH</span> Status</td><td>/api/orders/ORD-xxx/status</td><td>{ "status":"PaymentReview", "note":"…" }</td></tr>
+        <tr><td><span class="method POST">POST</span> Invoice</td><td>/api/orders/ORD-xxx/invoice</td><td>productCost, serviceFee, otherCharges</td></tr>
+        <tr><td><span class="method GET">GET</span> Users</td><td>/api/users?page=1</td><td>—</td></tr>
+        <tr><td><span class="method PUT">PUT</span> User</td><td>/api/users/USR-xxx</td><td>{ "fullName":"…", "phone":"…", "status":"active" }</td></tr>
+        <tr><td><span class="method GET">GET</span> Payments</td><td>/api/payments?page=1</td><td>—</td></tr>
+        <tr><td><span class="method PUT">PUT</span> Payment</td><td>/api/payments/PAY-xxx</td><td>{ "status":"Confirmed" }</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Macalinka — API + MongoDB</h2>
+      <p>POST geli · GET qaado · PUT beddel · DELETE tirtir</p>
+      <table>
+        <tr><th>Entity</th><th>GET</th><th>POST</th><th>PUT</th><th>DELETE</th></tr>
+        <tr><td>Orders</td><td>/api/orders</td><td>/api/orders</td><td>/api/orders/ORD-xxx</td><td>/api/orders/ORD-xxx</td></tr>
+        <tr><td>Users</td><td>/api/users</td><td>/api/users</td><td>/api/users/USR-xxx</td><td>/api/users/USR-xxx</td></tr>
+        <tr><td>Payments</td><td>/api/payments</td><td>/api/payments</td><td>/api/payments/PAY-xxx</td><td>/api/payments/PAY-xxx</td></tr>
+        <tr><td>Delivery</td><td>/api/delivery/zones</td><td>/api/delivery/zones</td><td>/api/delivery/zones/ZONE-xxx</td><td>/api/delivery/zones/ZONE-xxx</td></tr>
+        <tr><td>Invoice</td><td colspan="4">POST /api/orders/ORD-xxx/invoice (ma jiro /api/invoices)</td></tr>
+      </table>
+    </div>
+  </div>
+  <script>
+    if (location.port) document.getElementById('base').textContent = location.origin;
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+@host = http://localhost:5298
+@token = {{login.response.body.data.accessToken}}
+@orderId = ORD-001-01
+@userId = USR-001
+@zoneId = ZONE-HODAN
+
+### Login (hore — token)
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@assisted.local",
+  "password": "Admin@123"
+}
+
+###############################################################################
+# ORDERS — GET | POST | PUT | DELETE
+###############################################################################
+
+### GET list (Bearer admin — login hore)
+GET {{host}}/api/orders?page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### GET one — beddel ORD-xxx jawaabta POST (MA isticmaalin {orderId})
+GET {{host}}/api/orders/ORD-001-01
+Authorization: Bearer {{token}}
+
+### GET track (public — query, body madhan)
+GET {{host}}/api/orders/track?orderId={{orderId}}&phone=%2B25267889855
+
+### POST create (public — token maya)
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{
+  "fullName": "jaamac ali",
+  "phone": "+25267889855",
+  "productUrl": "https://www.alibaba.com/example",
+  "productName": "Alaab",
+  "productUnitPriceUsd": 20,
+  "quantity": 1,
+  "deliveryType": "HomeDelivery",
+  "districtId": "ZONE-HODAN",
+  "addressDetail": "abdicasiis, Muqdisho"
+}
+
+### PUT update
+PUT {{host}}/api/orders/ORD-001-01
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productName": "Alaab cusub",
+  "quantity": 2,
+  "notes": "updated via API"
+}
+
+### DELETE
+DELETE {{host}}/api/orders/ORD-001-01
+Authorization: Bearer {{token}}
+
+###############################################################################
+# USERS — GET | POST | PUT | DELETE
+###############################################################################
+
+### GET list
+GET {{host}}/api/users?page=1
+Authorization: Bearer {{token}}
+
+### GET one
+GET {{host}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### POST create
+POST {{host}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Test User",
+  "phone": "+252619999999"
+}
+
+### PUT update (status: active ama blocked KALIYA — ha gelin createdAt/totalOrders)
+PUT {{host}}/api/users/USR-004
+Content-Type: application/json
+
+{
+  "fullName": "Jaamac Ali",
+  "phone": "+252612345678",
+  "status": "active"
+}
+
+### DELETE
+DELETE {{host}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+
+###############################################################################
+# DELIVERY ZONES — GET | POST | PUT | DELETE
+###############################################################################
+
+### GET all (admin)
+GET {{host}}/api/delivery/zones
+Authorization: Bearer {{token}}
+
+### GET active (public)
+GET {{host}}/api/delivery/zones/active
+
+### GET one
+GET {{host}}/api/delivery/zones/{{zoneId}}
+Authorization: Bearer {{token}}
+
+### POST create zone
+POST {{host}}/api/delivery/zones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "zoneId": "ZONE-TEST",
+  "districtName": "Test District",
+  "districtNameEn": "Test",
+  "feeUsd": 5,
+  "isActive": true,
+  "sortOrder": 99
+}
+
+### PUT update zone
+PUT {{host}}/api/delivery/zones/{{zoneId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "districtName": "Hodan",
+  "districtNameEn": "Hodan",
+  "feeUsd": 6,
+  "isActive": true,
+  "sortOrder": 1
+}
+
+### DELETE zone
+DELETE {{host}}/api/delivery/zones/ZONE-TEST
+Authorization: Bearer {{token}}

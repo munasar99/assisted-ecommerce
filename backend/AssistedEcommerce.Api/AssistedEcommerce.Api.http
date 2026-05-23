@@ -1,0 +1,45 @@
+@host = http://localhost:5298
+@token = REPLACE_AFTER_LOGIN
+
+### Health
+GET {{host}}/api/health
+
+### MongoDB test (database: ubaxsana)
+GET {{host}}/api/health/mongodb
+
+### Count saved documents (xogta database-ka)
+GET {{host}}/api/health/data
+
+### Login
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@assisted.local",
+  "password": "Admin@123"
+}
+
+### Active delivery zones (public)
+GET {{host}}/api/delivery/zones/active
+
+### Create order (public)
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{
+  "fullName": "Ahmed Ali",
+  "phone": "+252612345678",
+  "productUrl": "https://www.alibaba.com/product-detail/example",
+  "quantity": 1,
+  "districtId": "ZONE-HODAN",
+  "addressDetail": "Near Bakara market"
+}
+
+### Admin — list orders
+GET {{host}}/api/orders?page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### Dashboard analytics
+GET {{host}}/api/analytics/dashboard
+Authorization: Bearer {{token}}

@@ -1,0 +1,3 @@
+export const ORDER_FORM_MAX_QUANTITY = 99;
+export const ORDER_FORM_MAX_PRICE_USD = 50_000;
+export const ORDER_FORM_MIN_PRICE_USD = 0.01;

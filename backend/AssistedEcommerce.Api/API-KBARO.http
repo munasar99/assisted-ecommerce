@@ -1,0 +1,298 @@
+# =============================================================================
+# ASSISTED E-COMMERCE API — Thunder Client (koobi-geli JSON-ka)
+# Bog HTML: http://localhost:5298/api-kbaro
+# Swagger:   http://localhost:5298/swagger
+# =============================================================================
+@host = http://localhost:5298
+@orderId = ORD-001-01
+@userId = USR-001
+@paymentId = PAY-0001
+@zoneId = ZONE-HODAN
+
+###############################################################################
+# 0. HORDHAC — Thunder Client
+###############################################################################
+# • URL bar: KALIYA http://localhost:5298/api/...  (HA ku darin POST ama GET halkan)
+# • Body tab: POST/PUT = JSON ON. GET/DELETE = Body OFF / madhan
+# • Development admin: token maya (AdminOrDevelopment)
+# • Tirtir xogta + IDs cusub: POST /api/health/reset-data
+# • Haddii 401: talaabada LOGIN hoose → Auth → Bearer → paste data.accessToken
+###############################################################################
+
+### LOGIN (admin token)
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@assisted.local",
+  "password": "Admin@123"
+}
+
+### PROFILE (Bearer loo baahan yahay production)
+GET {{host}}/api/auth/profile
+Authorization: Bearer PASTE_TOKEN_HALKAN
+
+### LOGOUT
+POST {{host}}/api/auth/logout
+Authorization: Bearer PASTE_TOKEN_HALKAN
+
+### HEALTH
+GET {{host}}/api/health
+
+### MONGODB TEST
+GET {{host}}/api/health/mongodb
+
+### TIRTIR xogta (users/orders) — USR-001, ORD-001-01 dib u bilaab
+POST {{host}}/api/health/reset-data
+
+### Hubi tirooyinka
+GET {{host}}/api/health/data
+
+###############################################################################
+# 1. DEGMOOYINKA (18 degmo) — public active list
+###############################################################################
+
+### GET 18 degmo (dropdown macmiil)
+GET {{host}}/api/delivery/zones/active
+
+### GET dhammaan zones (admin)
+GET {{host}}/api/delivery/zones
+
+### GET hal zone
+GET {{host}}/api/delivery/zones/{{zoneId}}
+
+### POST zone cusub
+POST {{host}}/api/delivery/zones
+Content-Type: application/json
+
+{
+  "zoneId": "ZONE-TEST",
+  "districtName": "Test",
+  "districtNameEn": "Test",
+  "feeUsd": 5,
+  "isActive": true,
+  "sortOrder": 99
+}
+
+### PUT beddel zone
+PUT {{host}}/api/delivery/zones/{{zoneId}}
+Content-Type: application/json
+
+{
+  "districtName": "Hodan",
+  "districtNameEn": "Hodan",
+  "feeUsd": 6,
+  "isActive": true,
+  "sortOrder": 8
+}
+
+### PUT fee kaliya
+PUT {{host}}/api/delivery/zones/{{zoneId}}/fee
+Content-Type: application/json
+
+{
+  "feeUsd": 5.5
+}
+
+### PATCH toggle active/off
+PATCH {{host}}/api/delivery/zones/{{zoneId}}/toggle
+
+### DELETE zone
+DELETE {{host}}/api/delivery/zones/ZONE-TEST
+
+###############################################################################
+# 2. ORDERS — GET | POST | PUT | DELETE | PATCH | INVOICE
+###############################################################################
+
+### GET liiska orders
+GET {{host}}/api/orders?page=1&pageSize=10
+
+### GET hal order (+ invoiceId)
+GET {{host}}/api/orders/{{orderId}}
+
+### GET track (public — body madhan)
+GET {{host}}/api/orders/track?orderId={{orderId}}&phone=%2B25267889855
+
+### POST order — Home delivery
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{
+  "fullName": "ismail ali",
+  "phone": "+25267889855",
+  "productUrl": "https://www.alibaba.com/example",
+  "productName": "baldi",
+  "productUnitPriceUsd": 20,
+  "quantity": 4,
+  "deliveryType": "HomeDelivery",
+  "districtId": "ZONE-ABDICASIIS",
+  "addressDetail": "abdicasiis, Muqdisho"
+}
+
+### POST order — Pickup (Tabo, districtId MA loo baahna)
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{
+  "fullName": "ismail ali",
+  "phone": "+25267889855",
+  "productUrl": "https://www.alibaba.com/example",
+  "productName": "baldi",
+  "productUnitPriceUsd": 20,
+  "quantity": 1,
+  "deliveryType": "Pickup"
+}
+
+### PUT beddel order (JSON kaliya — HA ku qorin POST http://...)
+PUT {{host}}/api/orders/{{orderId}}
+Content-Type: application/json
+
+{
+  "productName": "baldi cusub",
+  "quantity": 2,
+  "deliveryType": "HomeDelivery",
+  "districtId": "ZONE-HODAN",
+  "notes": "updated"
+}
+
+### PUT Pickup
+PUT {{host}}/api/orders/{{orderId}}
+Content-Type: application/json
+
+{
+  "deliveryType": "Pickup"
+}
+
+### PATCH status order
+PATCH {{host}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+
+{
+  "status": "PaymentReview",
+  "note": "Lacag la arkay"
+}
+
+### POST invoice (admin) — order hore u jiro
+POST {{host}}/api/orders/{{orderId}}/invoice
+Content-Type: application/json
+
+{
+  "productCost": 80,
+  "serviceFee": 8,
+  "otherCharges": 0
+}
+
+### DELETE order
+DELETE {{host}}/api/orders/{{orderId}}
+
+###############################################################################
+# 3. USERS — GET | POST | PUT | DELETE | PATCH
+###############################################################################
+
+### GET users
+GET {{host}}/api/users?page=1&pageSize=10
+
+### GET hal user
+GET {{host}}/api/users/{{userId}}
+
+### POST user
+POST {{host}}/api/users
+Content-Type: application/json
+
+{
+  "fullName": "Test User",
+  "phone": "+252619999999"
+}
+
+### PUT user (status: active ama blocked KALIYA)
+PUT {{host}}/api/users/{{userId}}
+Content-Type: application/json
+
+{
+  "fullName": "Jaamac Ali",
+  "phone": "+252612345678",
+  "status": "active"
+}
+
+### PATCH status user
+PATCH {{host}}/api/users/{{userId}}/status
+Content-Type: application/json
+
+{
+  "status": "blocked"
+}
+
+### DELETE user
+DELETE {{host}}/api/users/{{userId}}
+
+###############################################################################
+# 4. PAYMENTS — GET | POST | PUT | DELETE | UPLOAD
+###############################################################################
+
+### GET payments liiska
+GET {{host}}/api/payments?page=1
+
+### GET hal payment
+GET {{host}}/api/payments/{{paymentId}}
+
+### POST payment (admin)
+POST {{host}}/api/payments
+Content-Type: application/json
+
+{
+  "orderId": "ORD-001-01",
+  "payerPhone": "+252612345678",
+  "paymentMethod": "EVC",
+  "amountUsd": 100,
+  "status": "Pending"
+}
+
+### PUT payment — Confirm
+PUT {{host}}/api/payments/{{paymentId}}
+Content-Type: application/json
+
+{
+  "status": "Confirmed"
+}
+
+### PUT payment — Reject
+PUT {{host}}/api/payments/{{paymentId}}
+Content-Type: application/json
+
+{
+  "status": "Rejected"
+}
+
+### DELETE payment
+DELETE {{host}}/api/payments/{{paymentId}}
+
+# UPLOAD screenshot (Thunder: Body = Form, ma aha JSON)
+# Fields: orderId, phone, payerPhone, paymentMethod, file
+# POST {{host}}/api/payments/upload
+
+###############################################################################
+# 5. UPLOADS — order screenshot (Form, ma aha JSON)
+###############################################################################
+# POST {{host}}/api/uploads/order
+# Form: file + orderId (optional)
+
+###############################################################################
+# 6. ANALYTICS (admin + Bearer production)
+###############################################################################
+
+### Dashboard
+GET {{host}}/api/analytics/dashboard
+Authorization: Bearer PASTE_TOKEN_HALKAN
+
+###############################################################################
+# QIIMAHA MUHIIMKA AH
+###############################################################################
+# deliveryType: "HomeDelivery" | "Pickup"
+# districtId:   ZONE-HODAN, ZONE-ABDICASIIS, ZONE-DAYNIILE, ... (18 degmo)
+# order status: Pending, InvoiceSent, WaitingPayment, PaymentReview,
+#               Confirmed, OrderedFromSupplier, Shipping, ArrivedMogadishu,
+#               OutForDelivery, Delivered
+# payment status: Pending, UnderReview, Confirmed, Rejected
+# user status: active, blocked
+###############################################################################
