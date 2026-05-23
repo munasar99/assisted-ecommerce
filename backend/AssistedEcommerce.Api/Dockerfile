@@ -12,5 +12,6 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/out .
 ENV ASPNETCORE_ENVIRONMENT=Production
-# Listen on Railway/Render PORT (set in Program.cs); do not hardcode 8080 here.
+ENV PORT=8080
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "AssistedEcommerce.Api.dll"]

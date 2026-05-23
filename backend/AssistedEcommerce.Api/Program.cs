@@ -19,16 +19,14 @@ foreach (var envKey in new[] { "MONGODB_URI", "MONGODB_CONNECTION_STRING", "Mong
     break;
 }
 
-var builder = WebApplication.CreateBuilder(args);
+// Must listen on 0.0.0.0:$PORT before CreateBuilder (Railway healthcheck).
+var listenPort = Environment.GetEnvironmentVariable("PORT")?.Trim() ?? "8080";
+var listenUrl = $"http://0.0.0.0:{listenPort}";
+Environment.SetEnvironmentVariable("ASPNETCORE_URLS", listenUrl);
+Console.WriteLine($"[startup] ASPNETCORE_URLS={listenUrl}");
 
-var cloudPort = Environment.GetEnvironmentVariable("PORT")?.Trim();
-var isCloudHost = !string.IsNullOrWhiteSpace(cloudPort);
-if (isCloudHost)
-{
-    var listenUrl = $"http://0.0.0.0:{cloudPort}";
-    builder.WebHost.UseUrls(listenUrl);
-    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", listenUrl);
-}
+var builder = WebApplication.CreateBuilder(args);
+var isCloudHost = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PORT"));
 
 // Paste Atlas connection string in appsettings.Local.json (overrides other settings)
 builder.Configuration.AddJsonFile(
@@ -240,29 +238,27 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Respond before HTTPS/CORS/auth so Railway/Render healthchecks always get 200.
+// Railway healthcheck: no MongoDB/DI — must run before auth and controllers.
 app.Use(async (context, next) =>
 {
-    var path = context.Request.Path.Value ?? "";
-    if (path is "/api/health" or "/api/health/config" or "/api/health/env" or "/" or "/health")
+    var path = (context.Request.Path.Value ?? "").TrimEnd('/');
+    if (path is "" or "/" or "/health" or "/api/health" or "/api/health/env")
     {
+        context.Response.StatusCode = 200;
+        context.Response.ContentType = "application/json; charset=utf-8";
         if (path.Equals("/api/health/env", StringComparison.OrdinalIgnoreCase))
         {
-            context.Response.StatusCode = 200;
-            context.Response.ContentType = "application/json; charset=utf-8";
             await context.Response.WriteAsJsonAsync(new
             {
                 success = true,
                 MONGODB_URI_set = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MONGODB_URI")),
                 MongoDb__ConnectionString_set = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MongoDb__ConnectionString")),
                 PORT = Environment.GetEnvironmentVariable("PORT"),
-                hint = "Haddii labaduba false yihiin, Railway variables ma gaarin container-ka."
+                ASPNETCORE_URLS = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
             });
             return;
         }
 
-        context.Response.StatusCode = 200;
-        context.Response.ContentType = "application/json; charset=utf-8";
         await context.Response.WriteAsJsonAsync(new
         {
             success = true,
