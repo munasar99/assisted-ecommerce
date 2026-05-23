@@ -69,7 +69,7 @@ api.interceptors.response.use(
         err.message?.includes("Network Error"));
 
     const message = isNetwork
-      ? "API lama helin. Hubi backend inuu socdo: http://localhost:5298 (dotnet run) iyo MongoDB."
+      ? "API lama helin. Hubi backend (Render) inuu socdo iyo VITE_API_URL Vercel."
       : status === 415
         ? "Cilad upload (415). Dib u cusboonaysii bogga (F5) oo mar kale isku day."
         : err.response?.data?.message ||

@@ -11,6 +11,10 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var renderPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(renderPort))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort.Trim()}");
+
 // Paste Atlas connection string in appsettings.Local.json (overrides other settings)
 builder.Configuration.AddJsonFile(
     Path.Combine(builder.Environment.ContentRootPath, "appsettings.Local.json"),

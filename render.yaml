@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: assisted-ecommerce-api
+    runtime: docker
+    dockerfilePath: ./backend/AssistedEcommerce.Api/Dockerfile
+    dockerContext: ./backend/AssistedEcommerce.Api
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: MongoDb__DatabaseName
+        value: ubaxsana
+      - key: Cors__Origins__0
+        value: https://assisted-ecommerce.vercel.app
+      - key: PaymentVerification__Enabled
+        value: "true"
+      - key: Resend__Enabled
+        value: "true"
+      - key: Resend__UseDevelopmentRedirect
+        value: "false"
+      - key: Resend__SendEmailOnOrderCreated
+        value: "true"
+      - key: Resend__SendEmailOnPaymentSubmitted
+        value: "true"
+      - key: Cloudinary__Folder
+        value: assisted-ecommerce
