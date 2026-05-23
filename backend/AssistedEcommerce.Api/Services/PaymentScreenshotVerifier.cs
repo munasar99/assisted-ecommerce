@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using AssistedEcommerce.Api.Infrastructure;
@@ -66,11 +67,11 @@ public partial class PaymentScreenshotVerifier(
         string ocrText;
         try
         {
-            ocrText = await Task.Run(() => RunOcr(bytes), ct);
+            ocrText = await Task.Run(() => RunOcrWithFallback(bytes), ct);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "OCR failed: {Message}", ex.Message);
+            logger.LogWarning(ex, "OCR failed (net + CLI): {Message}", ex.Message);
             return PaymentScreenshotVerificationResult.Fail(
                 "OCR (akhrinta sawirka) ma shaqaynayo server-ka. Isku day mar kale ama sawir weyn oo cad. Haddii weli fashilmo, la xidhiidh taageerada.");
         }
@@ -175,13 +176,56 @@ public partial class PaymentScreenshotVerifier(
         return null;
     }
 
-    private static string RunOcr(byte[] imageBytes)
+    private string RunOcrWithFallback(byte[] imageBytes)
     {
-        var tessPath = ResolveTessDataPath();
-        using var engine = new TesseractEngine(tessPath, "eng", EngineMode.Default);
-        engine.DefaultPageSegMode = PageSegMode.Auto;
+        var ocrInput = PreprocessForOcr(imageBytes);
+        Exception? last = null;
 
-        byte[] ocrInput = imageBytes;
+        // Railway Docker: system tesseract CLI is more reliable than .NET native interop.
+        if (OperatingSystem.IsLinux() && IsTesseractCliAvailable())
+        {
+            try
+            {
+                var text = RunOcrCli(ocrInput);
+                logger.LogDebug("OCR via tesseract CLI, length={Len}", text.Length);
+                return text;
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+                logger.LogWarning(ex, "tesseract CLI OCR failed, trying .NET Tesseract");
+            }
+        }
+
+        try
+        {
+            var text = RunOcrTesseractNet(ocrInput);
+            logger.LogDebug("OCR via .NET Tesseract, length={Len}", text.Length);
+            return text;
+        }
+        catch (Exception ex)
+        {
+            last = ex;
+            logger.LogWarning(ex, ".NET Tesseract OCR failed");
+        }
+
+        if (!OperatingSystem.IsLinux() && IsTesseractCliAvailable())
+        {
+            try
+            {
+                return RunOcrCli(ocrInput);
+            }
+            catch (Exception ex)
+            {
+                last = ex;
+            }
+        }
+
+        throw new InvalidOperationException("OCR failed (CLI and .NET).", last);
+    }
+
+    private static byte[] PreprocessForOcr(byte[] imageBytes)
+    {
         try
         {
             using var image = Image.Load(imageBytes);
@@ -194,16 +238,87 @@ public partial class PaymentScreenshotVerifier(
                 .Grayscale());
             using var ms = new MemoryStream();
             image.SaveAsPng(ms);
-            ocrInput = ms.ToArray();
+            return ms.ToArray();
         }
         catch
         {
-            // use original
+            return imageBytes;
         }
+    }
 
+    private static string RunOcrTesseractNet(byte[] ocrInput)
+    {
+        var tessPath = ResolveTessDataPath();
+        using var engine = new TesseractEngine(tessPath, "eng", EngineMode.Default);
+        engine.DefaultPageSegMode = PageSegMode.Auto;
         using var pix = Pix.LoadFromMemory(ocrInput);
         using var page = engine.Process(pix);
         return page.GetText() ?? string.Empty;
+    }
+
+    private static bool IsTesseractCliAvailable()
+    {
+        try
+        {
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = "tesseract",
+                Arguments = "--version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            if (proc is null)
+                return false;
+            proc.WaitForExit(5000);
+            return proc.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string RunOcrCli(byte[] pngBytes)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ae-ocr-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var input = Path.Combine(dir, "in.png");
+        var outputBase = Path.Combine(dir, "out");
+        try
+        {
+            File.WriteAllBytes(input, pngBytes);
+            using var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = "tesseract",
+                Arguments = $"\"{input}\" \"{outputBase}\" -l eng --psm 6",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }) ?? throw new InvalidOperationException("Could not start tesseract process.");
+
+            if (!proc.WaitForExit(60_000))
+            {
+                try { proc.Kill(entireProcessTree: true); } catch { /* ignore */ }
+                throw new TimeoutException("tesseract CLI timed out.");
+            }
+
+            var err = proc.StandardError.ReadToEnd();
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(err) ? $"tesseract exit {proc.ExitCode}" : err);
+
+            var txtFile = outputBase + ".txt";
+            if (!File.Exists(txtFile))
+                throw new FileNotFoundException("tesseract did not produce output text.");
+
+            return File.ReadAllText(txtFile);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch { /* ignore */ }
+        }
     }
 
     private static string ResolveTessDataPath()

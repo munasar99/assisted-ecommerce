@@ -11,12 +11,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/out .
-# .NET Tesseract looks for /app/tessdata/eng.traineddata (NuGet may not copy on Linux publish).
+# OCR: copy eng.traineddata for .NET Tesseract + verify CLI
 RUN mkdir -p /app/tessdata \
-    && (test -f /app/tessdata/eng.traineddata \
-        || cp /usr/share/tesseract-ocr/*/tessdata/eng.traineddata /app/tessdata/ 2>/dev/null \
-        || cp /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata /app/tessdata/ 2>/dev/null \
-        || true)
+    && find /usr/share -type f -name 'eng.traineddata' -exec cp -f {} /app/tessdata/ \; \
+    && tesseract --version
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV PORT=8080
 EXPOSE 8080

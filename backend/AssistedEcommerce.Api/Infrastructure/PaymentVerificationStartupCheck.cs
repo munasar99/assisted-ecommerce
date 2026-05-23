@@ -17,18 +17,21 @@ public class PaymentVerificationStartupCheck(
 
         try
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "tessdata", "eng.traineddata");
-            if (!File.Exists(path))
-                path = Path.Combine(Directory.GetCurrentDirectory(), "tessdata", "eng.traineddata");
+            var tessFile = Path.Combine(AppContext.BaseDirectory, "tessdata", "eng.traineddata");
+            if (!File.Exists(tessFile))
+                tessFile = "/app/tessdata/eng.traineddata";
 
-            if (!File.Exists(path))
+            var hasTessData = File.Exists(tessFile);
+            var hasCli = OperatingSystem.IsLinux() && File.Exists("/usr/bin/tesseract");
+
+            if (hasCli)
+                logger.LogInformation("Payment OCR: tesseract CLI available (Railway/Linux).");
+            if (hasTessData)
+                logger.LogInformation("Payment OCR: tessdata at {Path}", tessFile);
+            if (!hasCli && !hasTessData)
             {
                 logger.LogCritical(
-                    "MISSING tessdata/eng.traineddata — payment screenshots CANNOT be verified. Run dotnet restore && dotnet build.");
-            }
-            else
-            {
-                logger.LogInformation("Payment screenshot OCR ready: {Path}", path);
+                    "Payment OCR NOT READY — install tesseract-ocr or tessdata/eng.traineddata.");
             }
         }
         catch (Exception ex)
