@@ -31,17 +31,21 @@ public class HealthController(
     public IActionResult ConfigCheck()
     {
         var mongo = mongoSettings.Value;
+        var target = ConfigEnvironment.DescribeMongoTarget(mongo.ConnectionString);
         return Ok(new
         {
             success = true,
-            mongoTarget = ConfigEnvironment.DescribeMongoTarget(mongo.ConnectionString),
+            mongoTarget = target,
             mongoEnvVarSet = ConfigEnvironment.HasMongoEnvVar(),
             database = mongo.DatabaseName,
             cloudinaryConfigured = cloudinarySettings.Value.IsConfigured,
             resendConfigured = resendSettings.Value.IsConfigured,
-            hint = ConfigEnvironment.DescribeMongoTarget(mongo.ConnectionString) is "localhost-default" or "not-set"
-                ? "Geli MONGODB_URI Railway Variables (RAW editor) kadib redeploy."
-                : "Mongo config looks OK — test /api/health/mongodb"
+            hint = target switch
+            {
+                "atlas" => "Mongo OK — frontend waa inuu /api isticmaalo (Vercel VITE_API_URL=/api).",
+                "localhost-default" => "Railway: run scripts/set-mongo-railway.ps1 ama MONGODB_URI --stdin.",
+                _ => "Geli MONGODB_URI Railway kadib redeploy."
+            }
         });
     }
 
@@ -71,11 +75,17 @@ public class HealthController(
         }
         catch (Exception ex)
         {
+            var target = ConfigEnvironment.DescribeMongoTarget(settings.ConnectionString);
             return StatusCode(503, new
             {
                 success = false,
-                message = "MongoDB connection failed. Is MongoDB running?",
+                message = "MongoDB connection failed.",
                 database = settings.DatabaseName,
+                target,
+                mongoEnvVarSet = ConfigEnvironment.HasMongoEnvVar(),
+                hint = target is "localhost-default" or "not-set"
+                    ? "Railway: geli MONGODB_URI (scripts/set-mongo-railway.ps1) kadib redeploy."
+                    : "Hubi Atlas Network Access 0.0.0.0/0 iyo password.",
                 error = ex.Message
             });
         }

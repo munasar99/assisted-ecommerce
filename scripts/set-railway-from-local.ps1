@@ -1,10 +1,17 @@
 # Reads appsettings.Local.json and pushes secrets to linked Railway service.
-# Run: cd backend/AssistedEcommerce.Api && railway link
-# Then: powershell -ExecutionPolicy Bypass -File scripts/set-railway-from-local.ps1
+# Requires: npm install -g @railway/cli  &&  railway link  (in backend/AssistedEcommerce.Api)
 
 $ErrorActionPreference = "Stop"
 $apiDir = Join-Path $PSScriptRoot "..\backend\AssistedEcommerce.Api"
 $localPath = Join-Path $apiDir "appsettings.Local.json"
+
+function Invoke-RailwayVar {
+    param([string]$Key, [string]$Value)
+    $Value | railway variable set $Key --stdin
+    if ($LASTEXITCODE -ne 0) {
+        throw "Railway failed setting $Key (exit $LASTEXITCODE)"
+    }
+}
 
 if (-not (Test-Path $localPath)) {
     Write-Error "Ma jiro appsettings.Local.json - samee marka hore."
@@ -24,42 +31,47 @@ if ([string]::IsNullOrWhiteSpace($mongo) -or $mongo -match "localhost") {
     Write-Error "MongoDb.ConnectionString waa localhost ama madhan - geli mongodb+srv Atlas."
 }
 
-Write-Host "Setting Railway variables from appsettings.Local.json ..." -ForegroundColor Cyan
+Write-Host "Setting Railway variables (railway variable set)..." -ForegroundColor Cyan
 
-railway variables set "MONGODB_URI=$mongo"
-railway variables set "MongoDb__DatabaseName=$($cfg.MongoDb.DatabaseName)"
-railway variables set "MongoDb__ConnectionString=$mongo"
-railway variables set "Cors__Origins__0=https://assisted-ecommerce.vercel.app"
-railway variables set "ASPNETCORE_ENVIRONMENT=Production"
+Invoke-RailwayVar -Key "MONGODB_URI" -Value $mongo
+Invoke-RailwayVar -Key "MongoDb__ConnectionString" -Value $mongo
+Invoke-RailwayVar -Key "MongoDb__DatabaseName" -Value $cfg.MongoDb.DatabaseName
+Invoke-RailwayVar -Key "Cors__Origins__0" -Value "https://assisted-ecommerce.vercel.app"
+Invoke-RailwayVar -Key "ASPNETCORE_ENVIRONMENT" -Value "Production"
 
 if ($null -ne $cfg.Jwt -and $cfg.Jwt.Key) {
-    railway variables set "Jwt__Key=$($cfg.Jwt.Key)"
+    Invoke-RailwayVar -Key "Jwt__Key" -Value $cfg.Jwt.Key
+} else {
+    Invoke-RailwayVar -Key "Jwt__Key" -Value "AssistedEcommerce-Production-Secret-Key-32Chars!!"
 }
 
 if ($cfg.Cloudinary.CloudName) {
-    railway variables set "Cloudinary__CloudName=$($cfg.Cloudinary.CloudName)"
-    railway variables set "Cloudinary__ApiKey=$($cfg.Cloudinary.ApiKey)"
-    railway variables set "Cloudinary__ApiSecret=$($cfg.Cloudinary.ApiSecret)"
-    railway variables set "Cloudinary__Folder=$($cfg.Cloudinary.Folder)"
+    Invoke-RailwayVar -Key "Cloudinary__CloudName" -Value $cfg.Cloudinary.CloudName
+    Invoke-RailwayVar -Key "Cloudinary__ApiKey" -Value $cfg.Cloudinary.ApiKey
+    Invoke-RailwayVar -Key "Cloudinary__ApiSecret" -Value $cfg.Cloudinary.ApiSecret
+    Invoke-RailwayVar -Key "Cloudinary__Folder" -Value $cfg.Cloudinary.Folder
 }
 
 if ($cfg.Resend.ApiKey) {
-    railway variables set "Resend__ApiKey=$($cfg.Resend.ApiKey)"
-    railway variables set "Resend__FromEmail=$($cfg.Resend.FromEmail)"
-    railway variables set "Resend__Enabled=true"
-    railway variables set "Resend__UseDevelopmentRedirect=false"
+    Invoke-RailwayVar -Key "Resend__ApiKey" -Value $cfg.Resend.ApiKey
+    Invoke-RailwayVar -Key "Resend__FromEmail" -Value $cfg.Resend.FromEmail
+    Invoke-RailwayVar -Key "Resend__Enabled" -Value "true"
+    Invoke-RailwayVar -Key "Resend__UseDevelopmentRedirect" -Value "false"
 }
 
 Write-Host ""
 Write-Host "Variables:" -ForegroundColor Yellow
-railway variables
+railway variable list
 
 Write-Host ""
 Write-Host "Redeploying..." -ForegroundColor Cyan
-railway redeploy
+railway redeploy -y 2>$null
+if ($LASTEXITCODE -ne 0) {
+    railway redeploy
+}
 
 Pop-Location
 
 Write-Host ""
-Write-Host "Done. Sug 2-3 daq kadib tijaabi:" -ForegroundColor Green
+Write-Host "Done. Sug 2-3 daq kadib:" -ForegroundColor Green
 Write-Host "https://assisted-ecommerce-api-production.up.railway.app/api/health/mongodb"

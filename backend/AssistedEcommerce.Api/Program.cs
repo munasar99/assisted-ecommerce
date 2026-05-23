@@ -9,6 +9,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
+// Railway/Render: copy MONGODB_URI into ASP.NET config key before host builds configuration.
+foreach (var envKey in new[] { "MONGODB_URI", "MONGODB_CONNECTION_STRING", "MongoDb__ConnectionString" })
+{
+    var raw = Environment.GetEnvironmentVariable(envKey);
+    if (string.IsNullOrWhiteSpace(raw) || raw.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+        continue;
+    Environment.SetEnvironmentVariable("MongoDb__ConnectionString", raw.Trim());
+    break;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 var cloudPort = Environment.GetEnvironmentVariable("PORT")?.Trim();
