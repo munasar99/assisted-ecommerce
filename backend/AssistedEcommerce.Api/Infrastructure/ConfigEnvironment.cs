@@ -27,6 +27,20 @@ public static class ConfigEnvironment
         return null;
     }
 
+    public static string ResolveConnectionString(MongoDbSettings settings, IConfiguration config)
+    {
+        var fromConfig = GetMongoConnectionString(config);
+        if (!string.IsNullOrWhiteSpace(fromConfig))
+            return fromConfig;
+
+        var conn = settings.ConnectionString?.Trim() ?? "";
+        if (!string.IsNullOrWhiteSpace(conn) && !IsLocalDefault(conn) &&
+            !conn.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            return conn;
+
+        return "";
+    }
+
     public static bool HasMongoEnvVar() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MONGODB_URI"))
         || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING"))

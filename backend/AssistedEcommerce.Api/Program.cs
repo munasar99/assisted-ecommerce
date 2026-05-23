@@ -238,8 +238,23 @@ using (var scope = app.Services.CreateScope())
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value ?? "";
-    if (path is "/api/health" or "/api/health/config" or "/" or "/health")
+    if (path is "/api/health" or "/api/health/config" or "/api/health/env" or "/" or "/health")
     {
+        if (path.Equals("/api/health/env", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json; charset=utf-8";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                success = true,
+                MONGODB_URI_set = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MONGODB_URI")),
+                MongoDb__ConnectionString_set = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MongoDb__ConnectionString")),
+                PORT = Environment.GetEnvironmentVariable("PORT"),
+                hint = "Haddii labaduba false yihiin, Railway variables ma gaarin container-ka."
+            });
+            return;
+        }
+
         context.Response.StatusCode = 200;
         context.Response.ContentType = "application/json; charset=utf-8";
         await context.Response.WriteAsJsonAsync(new

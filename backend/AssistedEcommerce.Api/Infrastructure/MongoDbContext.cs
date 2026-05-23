@@ -8,11 +8,22 @@ public class MongoDbContext
 {
     private readonly IMongoDatabase _db;
 
-    public MongoDbContext(IOptions<MongoDbSettings> settings)
+    public MongoDbContext(IOptions<MongoDbSettings> settings, IConfiguration configuration)
     {
-        Settings = settings.Value;
-        var client = new MongoClient(Settings.ConnectionString);
-        _db = client.GetDatabase(Settings.DatabaseName);
+        var bound = settings.Value;
+        var conn = ConfigEnvironment.ResolveConnectionString(bound, configuration);
+        var dbName = string.IsNullOrWhiteSpace(bound.DatabaseName) ? "ubaxsana" : bound.DatabaseName;
+
+        Settings = new MongoDbSettings { ConnectionString = conn, DatabaseName = dbName };
+
+        if (string.IsNullOrWhiteSpace(conn))
+        {
+            throw new InvalidOperationException(
+                "MongoDB ma configured. Railway: geli MONGODB_URI (mongodb+srv://...) kadib redeploy.");
+        }
+
+        var client = new MongoClient(conn);
+        _db = client.GetDatabase(dbName);
     }
 
     /// <summary>MongoDB database name (e.g. ubaxsana). All API saves go here permanently.</summary>
