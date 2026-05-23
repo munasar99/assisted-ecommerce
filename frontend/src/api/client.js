@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:5298/api";
+const BASE =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? "/api" : "http://localhost:5298/api");
 
 export const ADMIN_TOKEN_KEY = "adminToken";
 export const ADMIN_PROFILE_KEY = "adminProfile";
@@ -69,7 +71,7 @@ api.interceptors.response.use(
         err.message?.includes("Network Error"));
 
     const message = isNetwork
-      ? "API lama helin. Hubi backend (Render) inuu socdo iyo VITE_API_URL Vercel."
+      ? "API lama helin. Hubi Railway backend iyo vercel.json proxy (/api → Railway)."
       : status === 415
         ? "Cilad upload (415). Dib u cusboonaysii bogga (F5) oo mar kale isku day."
         : err.response?.data?.message ||
