@@ -11,9 +11,14 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var renderPort = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrWhiteSpace(renderPort))
-    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort.Trim()}");
+var cloudPort = Environment.GetEnvironmentVariable("PORT")?.Trim();
+var isCloudHost = !string.IsNullOrWhiteSpace(cloudPort);
+if (isCloudHost)
+{
+    var listenUrl = $"http://0.0.0.0:{cloudPort}";
+    builder.WebHost.UseUrls(listenUrl);
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", listenUrl);
+}
 
 // Paste Atlas connection string in appsettings.Local.json (overrides other settings)
 builder.Configuration.AddJsonFile(
@@ -171,7 +176,7 @@ using (var scope = app.Services.CreateScope())
             logger.LogWarning("Email: Resend disabled — geli Resend:ApiKey appsettings.Local.json ama RESEND_API_KEY.");
     }
 
-    if (app.Environment.IsProduction())
+    if (isCloudHost || app.Environment.IsProduction())
     {
         LogStorageAndEmail();
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
@@ -214,6 +219,26 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Respond before HTTPS/CORS/auth so Railway/Render healthchecks always get 200.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? "";
+    if (path is "/api/health" or "/" or "/health")
+    {
+        context.Response.StatusCode = 200;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            success = true,
+            status = "healthy",
+            timestamp = DateTime.UtcNow
+        });
+        return;
+    }
+
+    await next();
+});
+
 var uploadRoot = Path.Combine(app.Environment.ContentRootPath, builder.Configuration["Uploads:RootPath"] ?? "uploads");
 Directory.CreateDirectory(uploadRoot);
 app.UseStaticFiles(new StaticFileOptions
@@ -240,8 +265,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.RoutePrefix = "swagger");
 }
 
-// HTTP-only dev profile: skip HTTPS redirect (avoids warning when no https port)
-if (!app.Environment.IsDevelopment())
+// Cloud hosts (Railway PORT) terminate TLS at the edge — HTTP only inside the container.
+if (!app.Environment.IsDevelopment() && !isCloudHost)
     app.UseHttpsRedirection();
 
 app.UseCors("Frontend");
