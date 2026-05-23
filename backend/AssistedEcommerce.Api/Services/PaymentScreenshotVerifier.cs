@@ -28,7 +28,7 @@ public partial class PaymentScreenshotVerifier(
         "receipt", "transaction", "evc", "zaad", "edahab", "sahal", "premier", "taaj",
         "e-dahab", "mobile", "money", "lacag", "bixinta", "approved", "completed",
         "withdraw", "deposit", "balance", "merchant", "reference", "ref", "uwareejiyay",
-        "bixiyay", "plus", "waafi"
+        "uwareejisay", "bixiyay", "plus", "waafi", "evcplus", "evc plus", "haraagaagu"
     ];
 
     private static readonly string[] DateFormats =
@@ -70,9 +70,9 @@ public partial class PaymentScreenshotVerifier(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "OCR failed.");
+            logger.LogWarning(ex, "OCR failed: {Message}", ex.Message);
             return PaymentScreenshotVerificationResult.Fail(
-                "System-ku ma aqrin karo lacagta screenshot-ka. Soo rar sawir cad oo muujinaya lacagta saxda ah.");
+                "OCR (akhrinta sawirka) ma shaqaynayo server-ka. Isku day mar kale ama sawir weyn oo cad. Haddii weli fashilmo, la xidhiidh taageerada.");
         }
 
         var compact = CompactText(ocrText);
@@ -211,10 +211,16 @@ public partial class PaymentScreenshotVerifier(
         var candidates = new[]
         {
             Path.Combine(AppContext.BaseDirectory, "tessdata"),
-            Path.Combine(Directory.GetCurrentDirectory(), "tessdata")
+            Path.Combine(Directory.GetCurrentDirectory(), "tessdata"),
+            "/app/tessdata",
+            "/usr/share/tesseract-ocr/5/tessdata",
+            "/usr/share/tesseract-ocr/4.00/tessdata"
         };
+
         foreach (var path in candidates)
         {
+            if (string.IsNullOrWhiteSpace(path))
+                continue;
             if (File.Exists(Path.Combine(path, "eng.traineddata")))
                 return path;
         }
@@ -264,22 +270,11 @@ public partial class PaymentScreenshotVerifier(
         var target = Math.Round(expected, 2);
         var normalized = compact.Replace(',', '.');
 
-        var variants = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        foreach (var v in BuildAmountSearchVariants(target))
         {
-            target.ToString("F2", CultureInfo.InvariantCulture),
-            "$" + target.ToString("F2", CultureInfo.InvariantCulture),
-            "USD" + target.ToString("F2", CultureInfo.InvariantCulture),
-            target.ToString("0.##", CultureInfo.InvariantCulture),
-        };
-
-        foreach (var v in variants)
-        {
-            if (normalized.Contains(v.Replace("USD", "$", StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase))
+            if (normalized.Contains(v, StringComparison.OrdinalIgnoreCase))
                 return new AmountMatchResult(true, target, null);
         }
-
-        if (target == Math.Floor(target) && normalized.Contains('$' + ((int)target).ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
-            return new AmountMatchResult(true, target, null);
 
         var amounts = ExtractAmounts(normalized);
         if (amounts.Count == 0)
@@ -297,15 +292,46 @@ public partial class PaymentScreenshotVerifier(
         return new AmountMatchResult(false, null, closest);
     }
 
+    /// <summary>Mobile EVC/Zaad: $3 iyo $3.00 isku mid — labadaba la raadiyo.</summary>
+    private static IEnumerable<string> BuildAmountSearchVariants(decimal target)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            target.ToString("F2", CultureInfo.InvariantCulture),
+            "$" + target.ToString("F2", CultureInfo.InvariantCulture),
+            "$ " + target.ToString("F2", CultureInfo.InvariantCulture),
+            target.ToString("0.##", CultureInfo.InvariantCulture),
+            "$" + target.ToString("0.##", CultureInfo.InvariantCulture)
+        };
+
+        if (target != Math.Floor(target))
+            return set;
+
+        var whole = ((int)target).ToString(CultureInfo.InvariantCulture);
+        set.Add(whole);
+        set.Add("$" + whole);
+        set.Add("$ " + whole);
+        set.Add("USD " + whole);
+        set.Add("USD" + whole);
+        set.Add("[-EVCPLUS-] $" + whole);
+        set.Add("EVCPLUS- $" + whole);
+        return set;
+    }
+
     private static List<decimal> ExtractAmounts(string normalized)
     {
         var list = new List<decimal>();
         foreach (Match m in LooseAmountPattern().Matches(normalized))
         {
-            var raw = m.Groups[1].Value.Replace(',', '.');
+            var raw = (m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value).Replace(',', '.');
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
             if (!decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
                 continue;
             if (amount <= 0 || amount >= 1_000_000)
+                continue;
+            // Telefoon (613508774) ha loo qaadin lacag
+            if (amount >= 1000 && amount == Math.Floor(amount))
                 continue;
             list.Add(Math.Round(amount, 2));
         }
@@ -342,7 +368,8 @@ public partial class PaymentScreenshotVerifier(
     [GeneratedRegex(@"\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?\b")]
     private static partial Regex TimeInTextPattern();
 
-    [GeneratedRegex(@"(?:\$|USD\s*)?(\d{1,6}(?:[.,]\d{1,2})?)\b", RegexOptions.IgnoreCase)]
+  // EVC Plus: "[-EVCPLUS-] $3", "USD 12.50", "12,50"
+    [GeneratedRegex(@"(?:\$|USD\s*)(\d{1,6}(?:[.,]\d{1,2})?)|(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:USD|\$)", RegexOptions.IgnoreCase)]
     private static partial Regex LooseAmountPattern();
 
     [GeneratedRegex(
