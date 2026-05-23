@@ -200,6 +200,12 @@ using (var scope = app.Services.CreateScope())
             await Task.Delay(500, lifetime.ApplicationStopping);
             using var bgScope = app.Services.CreateScope();
             var bgLogger = bgScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            if (!ConfigEnvironment.HasMongoEnvVar())
+            {
+                bgLogger.LogWarning("MongoDB seed skipped — MONGODB_URI ma jiro container-ka.");
+                return;
+            }
+
             try
             {
                 await bgScope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync(lifetime.ApplicationStopping);

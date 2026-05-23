@@ -6,37 +6,34 @@ namespace AssistedEcommerce.Api.Infrastructure;
 
 public class MongoDbContext
 {
-    private readonly IMongoDatabase _db;
+    private readonly Lazy<IMongoDatabase> _db;
 
     public MongoDbContext(IOptions<MongoDbSettings> settings, IConfiguration configuration)
     {
         var bound = settings.Value;
         var conn = ConfigEnvironment.ResolveConnectionString(bound, configuration);
         var dbName = string.IsNullOrWhiteSpace(bound.DatabaseName) ? "ubaxsana" : bound.DatabaseName;
-
         Settings = new MongoDbSettings { ConnectionString = conn, DatabaseName = dbName };
 
-        if (string.IsNullOrWhiteSpace(conn))
+        _db = new Lazy<IMongoDatabase>(() =>
         {
-            throw new InvalidOperationException(
-                "MongoDB ma configured. Railway: geli MONGODB_URI (mongodb+srv://...) kadib redeploy.");
-        }
-
-        var client = new MongoClient(conn);
-        _db = client.GetDatabase(dbName);
+            if (string.IsNullOrWhiteSpace(conn))
+                throw new InvalidOperationException(
+                    "MongoDB ma configured. Railway: geli MONGODB_URI kadib redeploy.");
+            return new MongoClient(conn).GetDatabase(dbName);
+        });
     }
 
-    /// <summary>MongoDB database name (e.g. ubaxsana). All API saves go here permanently.</summary>
     public MongoDbSettings Settings { get; }
     public string DatabaseName => Settings.DatabaseName;
-    public IMongoDatabase Database => _db;
+    public IMongoDatabase Database => _db.Value;
 
-    public IMongoCollection<Admin> Admins => _db.GetCollection<Admin>("Admins");
-    public IMongoCollection<User> Users => _db.GetCollection<User>("Users");
-    public IMongoCollection<Order> Orders => _db.GetCollection<Order>("Orders");
-    public IMongoCollection<Invoice> Invoices => _db.GetCollection<Invoice>("Invoices");
-    public IMongoCollection<Payment> Payments => _db.GetCollection<Payment>("Payments");
-    public IMongoCollection<DeliveryZone> DeliveryZones => _db.GetCollection<DeliveryZone>("DeliveryZones");
-    public IMongoCollection<AuditLog> AuditLogs => _db.GetCollection<AuditLog>("AuditLogs");
-    public IMongoCollection<Counter> Counters => _db.GetCollection<Counter>("Counters");
+    public IMongoCollection<Admin> Admins => Database.GetCollection<Admin>("Admins");
+    public IMongoCollection<User> Users => Database.GetCollection<User>("Users");
+    public IMongoCollection<Order> Orders => Database.GetCollection<Order>("Orders");
+    public IMongoCollection<Invoice> Invoices => Database.GetCollection<Invoice>("Invoices");
+    public IMongoCollection<Payment> Payments => Database.GetCollection<Payment>("Payments");
+    public IMongoCollection<DeliveryZone> DeliveryZones => Database.GetCollection<DeliveryZone>("DeliveryZones");
+    public IMongoCollection<AuditLog> AuditLogs => Database.GetCollection<AuditLog>("AuditLogs");
+    public IMongoCollection<Counter> Counters => Database.GetCollection<Counter>("Counters");
 }
