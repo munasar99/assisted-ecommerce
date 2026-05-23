@@ -29,13 +29,17 @@ builder.Configuration.AddJsonFile(
 builder.Services.Configure<MongoDbSettings>(options =>
 {
     builder.Configuration.GetSection(MongoDbSettings.SectionName).Bind(options);
-    var atlasUri =
-        Environment.GetEnvironmentVariable("MONGODB_URI")
-        ?? Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING");
-    if (!string.IsNullOrWhiteSpace(atlasUri))
-        options.ConnectionString = atlasUri.Trim();
+    var mongoUri = ConfigEnvironment.GetMongoConnectionString(builder.Configuration);
+    if (!string.IsNullOrWhiteSpace(mongoUri))
+        options.ConnectionString = mongoUri;
 });
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+builder.Services.Configure<JwtSettings>(options =>
+{
+    builder.Configuration.GetSection(JwtSettings.SectionName).Bind(options);
+    var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? Environment.GetEnvironmentVariable("JWT_KEY");
+    if (!string.IsNullOrWhiteSpace(jwtKey))
+        options.Key = jwtKey.Trim();
+});
 builder.Services.Configure<UploadSettings>(builder.Configuration.GetSection(UploadSettings.SectionName));
 builder.Services.Configure<PricingSettings>(builder.Configuration.GetSection(PricingSettings.SectionName));
 builder.Services.Configure<OrderFormSecuritySettings>(builder.Configuration.GetSection(OrderFormSecuritySettings.SectionName));
@@ -152,13 +156,14 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var mongoCfg = builder.Configuration.GetSection(MongoDbSettings.SectionName).Get<MongoDbSettings>()!;
-
-    var conn = mongoCfg.ConnectionString ?? "";
-    var target = conn.Contains("mongodb.net", StringComparison.OrdinalIgnoreCase)
-        ? "MongoDB Atlas (online)"
-        : "MongoDB local";
-    logger.LogInformation("Database target: {Target}, name={Database}", target, mongoCfg.DatabaseName);
+    var mongoCfg = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MongoDbSettings>>().Value;
+    var mongoTarget = ConfigEnvironment.DescribeMongoTarget(mongoCfg.ConnectionString);
+    logger.LogInformation(
+        "Database target: {Target}, name={Database}, envMongoVarSet={EnvSet}",
+        mongoTarget, mongoCfg.DatabaseName, ConfigEnvironment.HasMongoEnvVar());
+    if (mongoTarget is "localhost-default" or "not-set")
+        logger.LogWarning(
+            "MongoDB Atlas ma configured Railway. Geli MONGODB_URI ama MongoDb__ConnectionString kadib redeploy.");
 
     void LogStorageAndEmail()
     {
@@ -223,7 +228,7 @@ using (var scope = app.Services.CreateScope())
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value ?? "";
-    if (path is "/api/health" or "/" or "/health")
+    if (path is "/api/health" or "/api/health/config" or "/" or "/health")
     {
         context.Response.StatusCode = 200;
         context.Response.ContentType = "application/json; charset=utf-8";

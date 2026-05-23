@@ -25,6 +25,26 @@ public class HealthController(
     [AllowAnonymous]
     public IActionResult Get() => Ok(new { success = true, status = "healthy", timestamp = DateTime.UtcNow });
 
+    /// <summary>Shows whether Railway env vars are applied (no secrets).</summary>
+    [HttpGet("config")]
+    [AllowAnonymous]
+    public IActionResult ConfigCheck()
+    {
+        var mongo = mongoSettings.Value;
+        return Ok(new
+        {
+            success = true,
+            mongoTarget = ConfigEnvironment.DescribeMongoTarget(mongo.ConnectionString),
+            mongoEnvVarSet = ConfigEnvironment.HasMongoEnvVar(),
+            database = mongo.DatabaseName,
+            cloudinaryConfigured = cloudinarySettings.Value.IsConfigured,
+            resendConfigured = resendSettings.Value.IsConfigured,
+            hint = ConfigEnvironment.DescribeMongoTarget(mongo.ConnectionString) is "localhost-default" or "not-set"
+                ? "Geli MONGODB_URI Railway Variables (RAW editor) kadib redeploy."
+                : "Mongo config looks OK — test /api/health/mongodb"
+        });
+    }
+
     /// <summary>Test MongoDB connection and show database name (ubaxsana).</summary>
     [HttpGet("mongodb")]
     [AllowAnonymous]
@@ -44,7 +64,7 @@ public class HealthController(
                 success = true,
                 message = "MongoDB connected",
                 database = settings.DatabaseName,
-                connection = settings.ConnectionString,
+                target = ConfigEnvironment.DescribeMongoTarget(settings.ConnectionString),
                 collections,
                 deliveryZonesCount = zoneCount
             });
