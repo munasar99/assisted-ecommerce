@@ -1,0 +1,35 @@
+# Fly.io — deploy API haddii Render aan la furin
+# Install: https://fly.io/docs/hands-on/install-flyctl/
+# Login: fly auth login
+# Deploy: cd backend/AssistedEcommerce.Api && fly launch --no-deploy
+#          fly secrets set MongoDb__ConnectionString="..." Cloudinary__ApiSecret="..." ...
+#          fly deploy
+
+app = "assisted-ecommerce-api"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "5s"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  MongoDb__DatabaseName = "ubaxsana"
+  Cors__Origins__0 = "https://assisted-ecommerce.vercel.app"
+  PaymentVerification__Enabled = "true"
+  Resend__Enabled = "true"
+  Resend__UseDevelopmentRedirect = "false"
+  Cloudinary__Folder = "assisted-ecommerce"
