@@ -155,12 +155,8 @@ using (var scope = app.Services.CreateScope())
         : "MongoDB local";
     logger.LogInformation("Database target: {Target}, name={Database}", target, mongoCfg.DatabaseName);
 
-    try
+    void LogStorageAndEmail()
     {
-        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-        await seeder.SeedAsync();
-        logger.LogInformation("MongoDB connected OK — xogta waa la keydin karaa.");
-
         var cloudinary = builder.Configuration.GetSection(CloudinarySettings.SectionName).Get<CloudinarySettings>();
         if (cloudinary is { IsConfigured: true })
             logger.LogInformation("Image storage: Cloudinary cloud={Cloud}, folder={Folder}", cloudinary.CloudName, cloudinary.Folder);
@@ -174,13 +170,47 @@ using (var scope = app.Services.CreateScope())
         else
             logger.LogWarning("Email: Resend disabled — geli Resend:ApiKey appsettings.Local.json ama RESEND_API_KEY.");
     }
-    catch (Exception ex)
+
+    if (app.Environment.IsProduction())
     {
-        logger.LogCritical(ex,
-            "STARTUP ABORTED: Cannot connect to MongoDB. Database='{Database}'. " +
-            "Hubi Atlas password (assistedecommerce / munasar12) iyo IP Access 0.0.0.0/0.",
-            mongoCfg.DatabaseName);
-        throw;
+        LogStorageAndEmail();
+        var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(500, lifetime.ApplicationStopping);
+            using var bgScope = app.Services.CreateScope();
+            var bgLogger = bgScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            try
+            {
+                await bgScope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync(lifetime.ApplicationStopping);
+                bgLogger.LogInformation("MongoDB connected OK — xogta waa la keydin karaa.");
+            }
+            catch (Exception ex) when (!lifetime.ApplicationStopping.IsCancellationRequested)
+            {
+                bgLogger.LogCritical(ex,
+                    "MongoDB seed failed in background. Database='{Database}'. " +
+                    "Hubi Railway variables MongoDb__ConnectionString iyo Atlas IP 0.0.0.0/0.",
+                    mongoCfg.DatabaseName);
+            }
+        }, lifetime.ApplicationStopping);
+    }
+    else
+    {
+        try
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+            await seeder.SeedAsync();
+            logger.LogInformation("MongoDB connected OK — xogta waa la keydin karaa.");
+            LogStorageAndEmail();
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "STARTUP ABORTED: Cannot connect to MongoDB. Database='{Database}'. " +
+                "Hubi Atlas password iyo IP Access 0.0.0.0/0.",
+                mongoCfg.DatabaseName);
+            throw;
+        }
     }
 }
 
@@ -219,8 +249,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Root URL → Swagger (browser opened at http://localhost:5298/)
-app.MapGet("/", () => Results.Redirect("/swagger"))
+// Root: 200 for platform healthchecks (Railway default "/"); Swagger only in Development.
+app.MapGet("/", () => app.Environment.IsDevelopment()
+        ? Results.Redirect("/swagger")
+        : Results.Ok(new { success = true, status = "running", health = "/api/health" }))
     .ExcludeFromDescription();
 
 app.MapGet("/api", () => Results.Ok(new
