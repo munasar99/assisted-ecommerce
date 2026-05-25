@@ -38,6 +38,7 @@ export function clearAdminToken() {
 export const api = axios.create({
   baseURL: BASE,
   headers: { "Content-Type": "application/json" },
+  timeout: 90_000,
 });
 
 api.interceptors.request.use((config) => {
@@ -64,13 +65,20 @@ api.interceptors.response.use(
         window.location.href = "/admin/login?expired=1";
       }
     }
+    const isTimeout =
+      err.code === "ECONNABORTED" ||
+      (err.message && err.message.toLowerCase().includes("timeout"));
+
     const isNetwork =
       !err.response &&
+      !isTimeout &&
       (err.code === "ERR_NETWORK" ||
         err.message === "Network Error" ||
         err.message?.includes("Network Error"));
 
-    const message = isNetwork
+    const message = isTimeout
+      ? "Waqtiga wuu dhammaaday (OCR/upload). Isku day mar kale — sawir cad oo yar, ama sug 1 daq."
+      : isNetwork
       ? "API lama helin. Hubi Railway backend iyo vercel.json proxy (/api → Railway)."
       : status === 415
         ? "Cilad upload (415). Dib u cusboonaysii bogga (F5) oo mar kale isku day."

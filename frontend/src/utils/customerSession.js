@@ -4,9 +4,14 @@ import { validatePhone } from "./validation";
 
 const TRACK_AUTH_KEY = "ubaxTrackAuth";
 
+/** Macmiil auth: sessionStorage kaliya (ma wadaagto isticmaale kale / tab cusub). */
+function store() {
+  return sessionStorage;
+}
+
 function readRaw(key) {
   try {
-    return localStorage.getItem(key);
+    return store().getItem(key);
   } catch {
     return null;
   }
@@ -14,12 +19,38 @@ function readRaw(key) {
 
 function writeRaw(key, value) {
   try {
-    localStorage.setItem(key, value);
-    if (key === LAST_ORDER_KEY) sessionStorage.removeItem(LAST_ORDER_KEY);
+    store().setItem(key, value);
   } catch {
     // ignore
   }
 }
+
+function removeRaw(key) {
+  try {
+    store().removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+/** Kayd hore oo localStorage — ka saar si user kale uusan u arkin dalabkii hore. */
+function purgeLegacyLocalCustomerStorage() {
+  try {
+    localStorage.removeItem(TRACK_AUTH_KEY);
+    const raw = localStorage.getItem(LAST_ORDER_KEY);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (data?.loggedIn || data?.paymentAllowed) localStorage.removeItem(LAST_ORDER_KEY);
+    } catch {
+      localStorage.removeItem(LAST_ORDER_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+purgeLegacyLocalCustomerStorage();
 
 export function readTrackAuth() {
   try {
@@ -54,13 +85,9 @@ export function persistTrackAuth(orderId, phone) {
 }
 
 export function clearTrackAuth() {
-  try {
-    localStorage.removeItem(TRACK_AUTH_KEY);
-  } catch {
-    // ignore
-  }
+  removeRaw(TRACK_AUTH_KEY);
   const s = readCustomerSession();
-  if (s) saveCustomerSession({ loggedIn: false });
+  if (s) saveCustomerSession({ loggedIn: false, paymentAllowed: false });
 }
 
 export function readCustomerSession() {
@@ -68,18 +95,13 @@ export function readCustomerSession() {
   if (auth) return { ...readOrderSession(), ...auth };
 
   try {
-    let raw = readRaw(LAST_ORDER_KEY);
-    if (!raw) {
-      raw = sessionStorage.getItem(LAST_ORDER_KEY);
-      if (raw) {
-        writeRaw(LAST_ORDER_KEY, raw);
-      }
-    }
+    const raw = readRaw(LAST_ORDER_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data?.orderId) return null;
     if (data.phone) data.phone = normalizePhone(data.phone);
     if (!data.phone) return null;
+    if (data.loggedIn === false) return null;
     return data;
   } catch {
     return null;
@@ -141,8 +163,9 @@ export function clearPaymentAccess() {
 }
 
 export function customerLogout() {
-  clearTrackAuth();
-  saveCustomerSession({ loggedIn: false, paymentAllowed: false });
+  removeRaw(TRACK_AUTH_KEY);
+  removeRaw(LAST_ORDER_KEY);
+  purgeLegacyLocalCustomerStorage();
 }
 
 export function canAccessPayment() {

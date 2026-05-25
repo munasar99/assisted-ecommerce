@@ -49,7 +49,9 @@ export const paymentsApi = {
   create: (body) => api.post("/payments", body).then(unwrap),
   update: (paymentId, body) => api.put(`/payments/${paymentId}`, body).then(unwrap),
   remove: (paymentId) => api.delete(`/payments/${paymentId}`).then(unwrap),
-  upload: (formData) => api.post("/payments/upload", formData).then(unwrap),
+  // OCR + Cloudinary on Railway can take 30–90s; Vercel proxy max ~60s — use direct Railway URL if timeouts persist.
+  upload: (formData) =>
+    api.post("/payments/upload", formData, { timeout: 120_000 }).then(unwrap),
 };
 
 export const uploadsApi = {

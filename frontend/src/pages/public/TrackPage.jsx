@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ordersApi } from "../../api/endpoints";
 import OrderTrackDetails from "../../components/OrderTrackDetails";
@@ -6,38 +7,46 @@ import Loader from "../../components/Loader";
 import PageShell from "../../components/PageShell";
 import { useCustomerSession } from "../../context/CustomerSessionContext";
 import { useToast } from "../../context/ToastContext";
-import { isCustomerLoggedIn, readTrackAuth } from "../../utils/customerSession";
 import { validatePhone } from "../../utils/validation";
 
 export default function TrackPage() {
   const { show } = useToast();
+  const location = useLocation();
   const {
     login,
     logout,
     patch,
     sync,
+    loggedIn,
     orderId: ctxOrderId,
     phone: ctxPhone,
   } = useCustomerSession();
 
-  const [manualLogin, setManualLogin] = useState(() => !isCustomerLoggedIn());
+  const [manualLogin, setManualLogin] = useState(() => !loggedIn);
   const [formOrderId, setFormOrderId] = useState("");
   const [formPhone, setFormPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.requireLogin) {
+      setManualLogin(true);
+      show("Fadlan login samee (Order ID + telefoon) si aad u aragto dalabkaaga.", "error");
+    }
+  }, [location.state?.requireLogin, show]);
 
   useEffect(() => {
     const restore = () => {
       sync();
-      if (isCustomerLoggedIn()) setManualLogin(false);
+      if (!loggedIn) setManualLogin(true);
     };
     restore();
     window.addEventListener("pageshow", restore);
     return () => window.removeEventListener("pageshow", restore);
-  }, [sync]);
+  }, [sync, loggedIn]);
 
-  const auth = readTrackAuth();
-  const autoView = !manualLogin && !!auth;
-  const activeOrderId = autoView ? auth.orderId : "";
-  const activePhone = autoView ? auth.phone : "";
+  const autoView = loggedIn && !manualLogin;
+  const activeOrderId = autoView ? ctxOrderId : "";
+  const activePhone = autoView ? ctxPhone : "";
 
   const {
     data: order,
@@ -64,18 +73,24 @@ export default function TrackPage() {
     });
   }, [order, activePhone, autoView, patch]);
 
-  const track = (e) => {
+  const track = async (e) => {
     e.preventDefault();
     if (!formOrderId.trim() || !validatePhone(formPhone)) {
       show("Order ID iyo phone sax ah geli", "error");
       return;
     }
-    const saved = login(formOrderId, formPhone);
-    if (!saved) {
-      show("Login lama keydiyin. Hubi Order ID iyo telefoon.", "error");
-      return;
+    setSubmitting(true);
+    try {
+      const result = await login(formOrderId, formPhone);
+      if (!result.ok) {
+        show(result.message, "error");
+        return;
+      }
+      setManualLogin(false);
+      show("Dalabka waa la helay", "success");
+    } finally {
+      setSubmitting(false);
     }
-    setManualLogin(false);
   };
 
   return (
@@ -111,9 +126,10 @@ export default function TrackPage() {
           />
           <button
             type="submit"
-            className="btn-primary w-full !py-3.5 text-base font-semibold"
+            disabled={submitting}
+            className="btn-primary w-full !py-3.5 text-base font-semibold disabled:opacity-60"
           >
-            Submit
+            {submitting ? "Waa la hubinayaa…" : "Submit"}
           </button>
         </form>
       )}
@@ -159,7 +175,10 @@ export default function TrackPage() {
           </p>
           <button
             type="button"
-            onClick={() => setManualLogin(true)}
+            onClick={() => {
+              logout();
+              setManualLogin(true);
+            }}
             className="btn-primary mt-4 w-full"
           >
             Dib u geli

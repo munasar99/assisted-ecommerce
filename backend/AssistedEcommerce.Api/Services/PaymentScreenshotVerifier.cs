@@ -99,9 +99,11 @@ public partial class PaymentScreenshotVerifier(
         var amountCheck = TryMatchExpectedAmount(compact, expectedAmountUsd, settings.AmountToleranceUsd);
         if (!amountCheck.Matched)
         {
-            var msg = amountCheck.ClosestWrongAmount is { } wrong
-                ? $"Screenshot-ku waxa uu muujiyaa {FormatMoney(wrong)}. Wadarta dalabka waa {FormatMoney(expectedAmountUsd)} — soo rar screenshot sax ah."
-                : $"Lacagta {FormatMoney(expectedAmountUsd)} lama helin sawirka. Soo rar screenshot muujinaya lacagta saxda ah.";
+            var msg = amountCheck.ReadBalanceOnly
+                ? $"Screenshot-ku wuxuu muujinayaa haraaga (balance), ma aha lacagta aad dirtay. Wadarta dalabka waa {FormatMoney(expectedAmountUsd)} — soo rar qaybta EVC/Zaad ee lacag dirid."
+                : amountCheck.ClosestWrongAmount is { } wrong
+                    ? $"Lacagta dirid: screenshot-ku waxa uu muujiyaa {FormatMoney(wrong)}. Wadarta dalabka waa {FormatMoney(expectedAmountUsd)}."
+                    : $"Lacagta {FormatMoney(expectedAmountUsd)} lama helin sawirka. Soo rar screenshot muujinaya lacagta aad dirtay (ma aha haraaga).";
             return PaymentScreenshotVerificationResult.Fail(msg, snippet);
         }
 
@@ -232,7 +234,7 @@ public partial class PaymentScreenshotVerifier(
             image.Mutate(x => x
                 .Resize(new ResizeOptions
                 {
-                    Size = new Size(Math.Max(image.Width * 2, 800), 0),
+                    Size = new Size(Math.Min(Math.Max(image.Width * 2, 600), 1200), 0),
                     Mode = ResizeMode.Max
                 })
                 .Grayscale());
@@ -299,7 +301,7 @@ public partial class PaymentScreenshotVerifier(
                 CreateNoWindow = true
             }) ?? throw new InvalidOperationException("Could not start tesseract process.");
 
-            if (!proc.WaitForExit(60_000))
+            if (!proc.WaitForExit(25_000))
             {
                 try { proc.Kill(entireProcessTree: true); } catch { /* ignore */ }
                 throw new TimeoutException("tesseract CLI timed out.");
@@ -378,12 +380,23 @@ public partial class PaymentScreenshotVerifier(
         return PaymentKeywords.Count(k => lower.Contains(k, StringComparison.Ordinal));
     }
 
-    private sealed record AmountMatchResult(bool Matched, decimal? DetectedAmount, decimal? ClosestWrongAmount);
+    private sealed record AmountMatchResult(
+        bool Matched,
+        decimal? DetectedAmount,
+        decimal? ClosestWrongAmount,
+        bool ReadBalanceOnly = false);
+
+    private sealed record AmountCandidate(decimal Value, bool IsBalanceLine, bool IsTransferLine);
 
     private static AmountMatchResult TryMatchExpectedAmount(string compact, decimal expected, decimal tolerance)
     {
         var target = Math.Round(expected, 2);
         var normalized = compact.Replace(',', '.');
+
+        // EVC Plus: "[-EVCPLUS-] $3" — lacag dirid, ma aha haraaga
+        if (TryExtractEvcTransferAmount(normalized) is { } evcAmount
+            && Math.Abs(evcAmount - target) <= tolerance)
+            return new AmountMatchResult(true, evcAmount, null);
 
         foreach (var v in BuildAmountSearchVariants(target))
         {
@@ -391,11 +404,27 @@ public partial class PaymentScreenshotVerifier(
                 return new AmountMatchResult(true, target, null);
         }
 
-        var amounts = ExtractAmounts(normalized);
-        if (amounts.Count == 0)
-            return new AmountMatchResult(false, null, null);
+        var candidates = ExtractAmountCandidates(normalized);
+        var paymentAmounts = candidates
+            .Where(c => c.IsTransferLine && !c.IsBalanceLine)
+            .Select(c => c.Value)
+            .Distinct()
+            .ToList();
 
-        var withinTolerance = amounts
+        if (paymentAmounts.Count == 0)
+            paymentAmounts = candidates
+                .Where(c => !c.IsBalanceLine)
+                .Select(c => c.Value)
+                .Distinct()
+                .ToList();
+
+        if (paymentAmounts.Count == 0)
+        {
+            var sawBalance = candidates.Any(c => c.IsBalanceLine);
+            return new AmountMatchResult(false, null, null, sawBalance);
+        }
+
+        var withinTolerance = paymentAmounts
             .Where(a => Math.Abs(a - target) <= tolerance)
             .OrderBy(a => Math.Abs(a - target))
             .ToList();
@@ -403,8 +432,48 @@ public partial class PaymentScreenshotVerifier(
         if (withinTolerance.Count > 0)
             return new AmountMatchResult(true, withinTolerance[0], null);
 
-        var closest = amounts.OrderBy(a => Math.Abs(a - target)).First();
+        var closest = paymentAmounts.OrderBy(a => Math.Abs(a - target)).First();
         return new AmountMatchResult(false, null, closest);
+    }
+
+    private static decimal? TryExtractEvcTransferAmount(string normalized)
+    {
+        var m = EvcTransferAmountPattern().Match(normalized);
+        if (!m.Success)
+            return null;
+        var raw = m.Groups[1].Value.Replace(',', '.');
+        return decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+            ? Math.Round(amount, 2)
+            : null;
+    }
+
+    private static List<AmountCandidate> ExtractAmountCandidates(string normalized)
+    {
+        var list = new List<AmountCandidate>();
+        foreach (Match m in LooseAmountPattern().Matches(normalized))
+        {
+            var raw = (m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value).Replace(',', '.');
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
+            if (!decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
+                continue;
+            if (amount <= 0 || amount >= 1_000_000)
+                continue;
+            if (amount >= 1000 && amount == Math.Floor(amount))
+                continue;
+
+            var start = Math.Max(0, m.Index - 55);
+            var len = Math.Min(110, normalized.Length - start);
+            var window = normalized.Substring(start, len);
+
+            var isBalance = BalanceContextPattern().IsMatch(window);
+            var isTransfer = TransferContextPattern().IsMatch(window)
+                || EvcTransferAmountPattern().IsMatch(window);
+
+            list.Add(new AmountCandidate(Math.Round(amount, 2), isBalance, isTransfer));
+        }
+
+        return list;
     }
 
     /// <summary>Mobile EVC/Zaad: $3 iyo $3.00 isku mid — labadaba la raadiyo.</summary>
@@ -431,27 +500,6 @@ public partial class PaymentScreenshotVerifier(
         set.Add("[-EVCPLUS-] $" + whole);
         set.Add("EVCPLUS- $" + whole);
         return set;
-    }
-
-    private static List<decimal> ExtractAmounts(string normalized)
-    {
-        var list = new List<decimal>();
-        foreach (Match m in LooseAmountPattern().Matches(normalized))
-        {
-            var raw = (m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value).Replace(',', '.');
-            if (string.IsNullOrWhiteSpace(raw))
-                continue;
-            if (!decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
-                continue;
-            if (amount <= 0 || amount >= 1_000_000)
-                continue;
-            // Telefoon (613508774) ha loo qaadin lacag
-            if (amount >= 1000 && amount == Math.Floor(amount))
-                continue;
-            list.Add(Math.Round(amount, 2));
-        }
-
-        return list.Distinct().ToList();
     }
 
     private static string FormatMoney(decimal amount) => $"${amount:F2}";
@@ -483,9 +531,20 @@ public partial class PaymentScreenshotVerifier(
     [GeneratedRegex(@"\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?\b")]
     private static partial Regex TimeInTextPattern();
 
-  // EVC Plus: "[-EVCPLUS-] $3", "USD 12.50", "12,50"
+    // EVC Plus: "[-EVCPLUS-] $3", "USD 12.50", "12,50"
     [GeneratedRegex(@"(?:\$|USD\s*)(\d{1,6}(?:[.,]\d{1,2})?)|(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:USD|\$)", RegexOptions.IgnoreCase)]
     private static partial Regex LooseAmountPattern();
+
+    [GeneratedRegex(@"\[-?\s*EVC\s*PLUS\s*-?\]\s*\$?\s*(\d+(?:[.,]\d{1,2})?)", RegexOptions.IgnoreCase)]
+    private static partial Regex EvcTransferAmountPattern();
+
+    [GeneratedRegex(@"haraag|balance|remaining|hadhaag|harag\s*aagu", RegexOptions.IgnoreCase)]
+    private static partial Regex BalanceContextPattern();
+
+    [GeneratedRegex(
+        @"evc\s*plus|evcplus|\[-?\s*evc|uwareejis|uwareejiy|sent\b|paid\b|transfer|bixiy|lacag\s*dir",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex TransferContextPattern();
 
     [GeneratedRegex(
         @"\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}(?:\s+\d{1,2}:\d{2})?)\b",

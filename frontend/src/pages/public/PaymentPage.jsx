@@ -4,7 +4,13 @@ import PageShell from "../../components/PageShell";
 export default function PaymentPage() {
   return (
     <PageShell title="Lacag Bixinta" subtitle="Payment" centered maxWidth="max-w-md">
-      <div className="card-elevated flex min-h-[280px] flex-col items-center justify-center p-10 sm:p-14">
+      <div className="card-elevated flex min-h-[280px] flex-col items-center justify-center gap-4 p-10 sm:p-14">
+        <Link
+          to="/track"
+          className="text-sm font-medium text-brand-600 hover:underline"
+        >
+          Hore u dalbatay? Login samee (Dalabkayga)
+        </Link>
         <Link
           to="/order"
           className="group relative inline-flex w-full max-w-xs items-center justify-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-brand-600 to-teal-700 px-8 py-5 text-lg font-bold text-white shadow-xl shadow-brand-600/40 transition duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-brand-600/50 active:scale-[0.98]"

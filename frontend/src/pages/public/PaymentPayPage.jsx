@@ -5,24 +5,24 @@ import OrderPaymentForm from "../../components/OrderPaymentForm";
 import Loader from "../../components/Loader";
 import PageShell from "../../components/PageShell";
 import { useCustomerSession } from "../../context/CustomerSessionContext";
-import {
-  canAccessPayment,
-  clearPaymentAccess,
-  readCustomerSession,
-} from "../../utils/customerSession";
+import { canAccessPayment, clearPaymentAccess } from "../../utils/customerSession";
 import { getOrderPricing } from "../../utils/orderPricing";
 
 export default function PaymentPayPage() {
   const navigate = useNavigate();
-  const { sync } = useCustomerSession();
-  const session = readCustomerSession();
+  const { sync, orderId, phone, loggedIn } = useCustomerSession();
 
-  if (!canAccessPayment()) {
-    return <Navigate to="/payment" replace />;
+  if (!loggedIn) {
+    return <Navigate to="/track" replace state={{ requireLogin: true }} />;
   }
 
-  const orderId = session.orderId;
-  const phone = session.phone;
+  if (!canAccessPayment()) {
+    return <Navigate to="/track" replace />;
+  }
+
+  if (!orderId || !phone) {
+    return <Navigate to="/track" replace state={{ requireLogin: true }} />;
+  }
 
   const { data: order, isLoading } = useQuery({
     queryKey: ["track", orderId, phone],

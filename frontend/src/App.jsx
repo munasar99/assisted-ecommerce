@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import CustomerProtectedRoute from "./routes/CustomerProtectedRoute";
 import HomePage from "./pages/public/HomePage";
 import OrderPage from "./pages/public/OrderPage";
 import PaymentPage from "./pages/public/PaymentPage";
@@ -27,7 +28,9 @@ export default function App() {
         <Route path="home" element={<HomePage />} />
         <Route path="order" element={<OrderPage />} />
         <Route path="payment" element={<PaymentPage />} />
-        <Route path="payment/pay" element={<PaymentPayPage />} />
+        <Route element={<CustomerProtectedRoute />}>
+          <Route path="payment/pay" element={<PaymentPayPage />} />
+        </Route>
         <Route path="payment/thanks" element={<PaymentThankYouPage />} />
         <Route path="track" element={<TrackPage />} />
         <Route path="success" element={<SuccessPage />} />
