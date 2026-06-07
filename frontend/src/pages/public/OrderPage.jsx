@@ -163,6 +163,23 @@ export default function OrderPage() {
 
       const result = await ordersApi.create(payload);
 
+      const aiStatus = (result?.aiValidationStatus || "").toUpperCase();
+      if (aiStatus === "VALID") {
+        show(
+          result?.aiValidationMessage ||
+            "AI wuu xaqiijiyay: link, sawir, iyo lacagta waa is waafaqsan yihiin.",
+          "success",
+        );
+      } else if (aiStatus === "WARNING") {
+        show(
+          result?.aiValidationMessage ||
+            "Qaabka aasaasiga ah waa la hubiyay — AI buuxa ma jirto (API key geli backend/.env).",
+          "error",
+        );
+      } else if (result?.aiValidationMessage) {
+        show(result.aiValidationMessage, "success");
+      }
+
       if (result?.emailSent) {
         show("Dalabka waa la helay — email ayaa loo diray cinwaankaaga.", "success");
       } else if (result?.emailError) {
@@ -385,7 +402,7 @@ export default function OrderPage() {
           disabled={loading}
           className="btn-primary w-full !py-3.5 text-base font-semibold"
         >
-          {loading ? "Waa la dirayaa..." : "Send"}
+          {loading ? "AI wuxuu hubinayaa link, sawir, lacagta..." : "Send"}
         </button>
       </form>
     </PageShell>
