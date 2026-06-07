@@ -29,6 +29,7 @@ if (!string.IsNullOrWhiteSpace(cloudPort))
 }
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 20 * 1024 * 1024);
 var isCloudHost = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PORT"));
 
 // Paste Atlas connection string in appsettings.Local.json (overrides other settings)
@@ -94,6 +95,7 @@ builder.Services.AddHttpClient<IEmailService, ResendEmailService>((sp, client) =
 });
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IOrderScreenshotLoader, OrderScreenshotLoader>();
 builder.Services.AddHttpClient<IAiBackendClient, AiBackendClient>((sp, client) =>
 {
     var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiBackendSettings>>().Value;

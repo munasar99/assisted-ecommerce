@@ -13,6 +13,8 @@ public record CreateOrderRequest(
     string? ProductName = null,
     string? Notes = null,
     string? OrderScreenshotUrl = null,
+    /// <summary>Base64 sawir alaabta — AI validation (frontend ka yimaada).</summary>
+    string? OrderScreenshotBase64 = null,
     /// <summary>UTC markii macmiilku furay foomka — server wuxuu hubiyaa waqtiga buuxinta.</summary>
     DateTime? FormStartedAtUtc = null);
 
