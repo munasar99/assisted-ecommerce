@@ -31,6 +31,7 @@ public class PaymentService(
     IFileStorageService fileStorage,
     IPaymentScreenshotVerifier screenshotVerifier,
     INotificationService notificationService,
+    IAiBackendClient aiBackend,
     IAuditService auditService,
     IOptions<PricingSettings> pricingOptions) : IPaymentService
 {
@@ -177,6 +178,21 @@ public class PaymentService(
             p.KgFeePerKgUsd,
             p.ServiceFeePerItemUsd);
 
+        var imageBase64 = Convert.ToBase64String(bytes);
+
+        if (aiBackend.IsEnabled)
+        {
+            var aiReceipt = await aiBackend.VerifyReceiptAsync(new AiReceiptVerificationRequest(
+                orderId,
+                expectedTotal,
+                expectedTotal,
+                paymentMethod,
+                imageBase64), ct);
+
+            if (aiReceipt is not null && string.Equals(aiReceipt.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
+                throw new ApiException(aiReceipt.Message ?? "Receipt-ka AI-gu wuu diiday. Fadlan screenshot sax ah soo geli.");
+        }
+
         var verification = await screenshotVerifier.VerifyAsync(
             new MemoryStream(bytes),
             expectedTotal,
@@ -228,6 +244,20 @@ public class PaymentService(
             order.CustomerFullName,
             expectedTotal,
             ct);
+
+        if (aiBackend.IsEnabled)
+        {
+            _ = await aiBackend.NotifyPaymentAsync(new AiPaymentNotifyRequest(
+                order.OrderId,
+                order.CustomerFullName,
+                order.CustomerEmail,
+                order.CustomerPhone,
+                order.ProductName,
+                expectedTotal,
+                paymentMethod,
+                imageBase64,
+                expectedTotal), ct);
+        }
 
         var emailSent = emailResult?.Success == true;
         string? emailError = emailResult?.ErrorMessage;

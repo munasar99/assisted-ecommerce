@@ -19,11 +19,14 @@ foreach (var envKey in new[] { "MONGODB_URI", "MONGODB_CONNECTION_STRING", "Mong
     break;
 }
 
-// Must listen on 0.0.0.0:$PORT before CreateBuilder (Railway healthcheck).
-var listenPort = Environment.GetEnvironmentVariable("PORT")?.Trim() ?? "8080";
-var listenUrl = $"http://0.0.0.0:{listenPort}";
-Environment.SetEnvironmentVariable("ASPNETCORE_URLS", listenUrl);
-Console.WriteLine($"[startup] ASPNETCORE_URLS={listenUrl}");
+// Railway/Render only: listen on 0.0.0.0:$PORT. Local dev uses launchSettings (5298).
+var cloudPort = Environment.GetEnvironmentVariable("PORT")?.Trim();
+if (!string.IsNullOrWhiteSpace(cloudPort))
+{
+    var listenUrl = $"http://0.0.0.0:{cloudPort}";
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", listenUrl);
+    Console.WriteLine($"[startup] ASPNETCORE_URLS={listenUrl}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 var isCloudHost = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PORT"));
@@ -53,6 +56,7 @@ builder.Services.Configure<PricingSettings>(builder.Configuration.GetSection(Pri
 builder.Services.Configure<OrderFormSecuritySettings>(builder.Configuration.GetSection(OrderFormSecuritySettings.SectionName));
 builder.Services.Configure<PaymentVerificationSettings>(builder.Configuration.GetSection(PaymentVerificationSettings.SectionName));
 builder.Services.Configure<PaymentsSettings>(builder.Configuration.GetSection(PaymentsSettings.SectionName));
+builder.Services.Configure<AiBackendSettings>(builder.Configuration.GetSection(AiBackendSettings.SectionName));
 builder.Services.AddOptions<ResendSettings>()
     .Bind(builder.Configuration.GetSection(ResendSettings.SectionName))
     .PostConfigure(o =>
@@ -90,6 +94,12 @@ builder.Services.AddHttpClient<IEmailService, ResendEmailService>((sp, client) =
 });
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddHttpClient<IAiBackendClient, AiBackendClient>((sp, client) =>
+{
+    var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiBackendSettings>>().Value;
+    client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 10, 120));
+});
 
 builder.Services.AddHttpContextAccessor();
 
@@ -117,7 +127,8 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new AdminOrDevelopmentRequirement()));
 });
 
-var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:5173"];
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+    ?? ["http://localhost:5173", "http://localhost:5176", "http://localhost:3001"];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>

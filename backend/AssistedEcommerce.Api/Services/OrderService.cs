@@ -27,6 +27,7 @@ public class OrderService(
     IDeliveryService deliveryService,
     INotificationService notificationService,
     IAuditService auditService,
+    IAiBackendClient aiBackend,
     IOptions<PricingSettings> pricingOptions,
     IOptions<OrderFormSecuritySettings> formSecurityOptions,
     IOptions<ResendSettings> resendOptions,
@@ -79,6 +80,20 @@ public class OrderService(
             pricing.ServiceFeePerItemUsd);
 
         var user = await userService.FindOrCreateByPhoneAsync(request.FullName, request.Phone, ct);
+
+        if (aiBackend.IsEnabled)
+        {
+            var aiResult = await aiBackend.ValidateOrderAsync(new AiOrderValidationRequest(
+                request.ProductName,
+                request.ProductUrl.Trim(),
+                request.ProductUnitPriceUsd,
+                request.Quantity,
+                request.Phone.Trim(),
+                null), ct);
+
+            if (aiResult is not null && string.Equals(aiResult.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
+                throw new ApiException(aiResult.Message ?? "Order-ka AI-gu wuu diiday. Fadlan xogta sax ah geli.");
+        }
 
         var orderId = await idGenerator.NextOrderIdAsync(user.UserId, ct);
         var invoiceNumber = await idGenerator.NextInvoiceNumberAsync(ct);
