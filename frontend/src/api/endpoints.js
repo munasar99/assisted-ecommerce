@@ -60,6 +60,7 @@ export const uploadsApi = {
 
 export const notificationsApi = {
   emailStatus: () => api.get("/notifications/email/status").then(unwrap),
+  preview: () => api.get("/notifications/preview").then(unwrap),
   sendTestEmail: (body) => api.post("/notifications/email/test", body).then(unwrap),
   sendOrderEmail: (orderId) => api.post(`/notifications/email/order/${encodeURIComponent(orderId)}`).then(unwrap),
 };
