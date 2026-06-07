@@ -8,4 +8,6 @@ public record PaymentUploadResponse(
     string Status,
     string PaymentScreenshotUrl,
     bool EmailSent = false,
-    string? EmailError = null);
+    string? EmailError = null,
+    bool WhatsappSent = false,
+    string? NotifyNote = null);

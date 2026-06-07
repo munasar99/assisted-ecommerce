@@ -13,6 +13,7 @@ public interface IAiBackendClient
     Task<AiValidationResponse?> VerifyReceiptAsync(AiReceiptVerificationRequest request, CancellationToken ct = default);
     Task<AiPaymentNotifyResponse?> NotifyPaymentAsync(AiPaymentNotifyRequest request, CancellationToken ct = default);
     Task<bool> HealthCheckAsync(CancellationToken ct = default);
+    Task<bool> IsAiReadyAsync(CancellationToken ct = default);
     Task<JsonElement?> GetNotifyPreviewAsync(CancellationToken ct = default);
 }
 
@@ -84,6 +85,24 @@ public class AiBackendClient(
         return new AiPaymentNotifyResponse(
             MapValidation(response.Data.Ai),
             response.Data.Notifications);
+    }
+
+    public async Task<bool> IsAiReadyAsync(CancellationToken ct = default)
+    {
+        if (!IsEnabled) return false;
+        try
+        {
+            await using var stream = await http.GetStreamAsync("/api/health", ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            if (doc.RootElement.TryGetProperty("features", out var features) &&
+                features.TryGetProperty("ai", out var ai))
+                return ai.GetBoolean();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "AI Backend features check failed");
+        }
+        return false;
     }
 
     public async Task<bool> HealthCheckAsync(CancellationToken ct = default)

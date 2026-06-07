@@ -82,7 +82,7 @@ public class OrderService(
 
         var user = await userService.FindOrCreateByPhoneAsync(request.FullName, request.Phone, ct);
 
-        if (aiBackend.IsEnabled)
+        if (aiBackend.IsEnabled && await aiBackend.IsAiReadyAsync(ct))
         {
             var imageBase64 = !string.IsNullOrWhiteSpace(request.OrderScreenshotBase64)
                 ? request.OrderScreenshotBase64.Trim()

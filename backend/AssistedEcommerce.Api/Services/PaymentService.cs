@@ -180,7 +180,7 @@ public class PaymentService(
 
         var imageBase64 = Convert.ToBase64String(bytes);
 
-        if (aiBackend.IsEnabled)
+        if (aiBackend.IsEnabled && await aiBackend.IsAiReadyAsync(ct))
         {
             var aiReceipt = await aiBackend.VerifyReceiptAsync(new AiReceiptVerificationRequest(
                 orderId,
@@ -245,9 +245,11 @@ public class PaymentService(
             expectedTotal,
             ct);
 
+        var whatsappSent = false;
+        string? notifyNote = null;
         if (aiBackend.IsEnabled)
         {
-            _ = await aiBackend.NotifyPaymentAsync(new AiPaymentNotifyRequest(
+            var notify = await aiBackend.NotifyPaymentAsync(new AiPaymentNotifyRequest(
                 order.OrderId,
                 order.CustomerFullName,
                 order.CustomerEmail,
@@ -257,6 +259,9 @@ public class PaymentService(
                 paymentMethod,
                 imageBase64,
                 expectedTotal), ct);
+
+            notifyNote = SummarizeNotifyResult(notify);
+            whatsappSent = notifyNote?.Contains("WhatsApp: haa", StringComparison.OrdinalIgnoreCase) == true;
         }
 
         var emailSent = emailResult?.Success == true;
@@ -279,7 +284,20 @@ public class PaymentService(
             order.Status,
             url,
             emailSent,
-            emailError);
+            emailError,
+            whatsappSent,
+            notifyNote);
+    }
+
+    private static string? SummarizeNotifyResult(AiPaymentNotifyResponse? notify)
+    {
+        if (notify?.Notifications is null) return "Node.js notify: jawaab ma helin";
+        var json = notify.Notifications.Value.GetRawText();
+        var waOk = json.Contains("\"sent\":true", StringComparison.OrdinalIgnoreCase);
+        var emailOk = json.Contains("customerEmail", StringComparison.OrdinalIgnoreCase) && waOk;
+        if (!waOk)
+            return "WhatsApp/Email Node: ma configured — geli .env (WHATSAPP_TOKEN, EMAIL_PASS)";
+        return "WhatsApp: haa · Email Node: hubi .env";
     }
 
     private async Task SyncOrderFromPaymentAsync(Order order, Payment payment, string by, CancellationToken ct)
