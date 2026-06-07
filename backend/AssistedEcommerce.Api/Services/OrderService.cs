@@ -169,6 +169,19 @@ public class OrderService(
             order.TotalAmountUsd,
             ct);
 
+        if (aiBackend.IsEnabled)
+        {
+            var nodeEmail = await aiBackend.NotifyOrderEmailAsync(new AiOrderNotifyRequest(
+                order.OrderId,
+                order.CustomerFullName,
+                order.CustomerEmail,
+                order.CustomerPhone,
+                order.TotalAmountUsd,
+                order.ProductName), ct);
+            if (nodeEmail?.Notifications is not null)
+                logger.LogInformation("Node order email notify sent for {OrderId}", order.OrderId);
+        }
+
         var emailSent = emailResult?.Success == true;
         var emailError = emailResult?.ErrorMessage;
         if (!emailSent && string.IsNullOrWhiteSpace(emailError) && string.IsNullOrWhiteSpace(order.CustomerEmail))

@@ -12,6 +12,7 @@ public interface IAiBackendClient
     Task<AiValidationResponse?> ValidateOrderAsync(AiOrderValidationRequest request, CancellationToken ct = default);
     Task<AiValidationResponse?> VerifyReceiptAsync(AiReceiptVerificationRequest request, CancellationToken ct = default);
     Task<AiPaymentNotifyResponse?> NotifyPaymentAsync(AiPaymentNotifyRequest request, CancellationToken ct = default);
+    Task<AiPaymentNotifyResponse?> NotifyOrderEmailAsync(AiOrderNotifyRequest request, CancellationToken ct = default);
     Task<bool> HealthCheckAsync(CancellationToken ct = default);
     Task<bool> IsAiReadyAsync(CancellationToken ct = default);
     Task<JsonElement?> GetNotifyPreviewAsync(CancellationToken ct = default);
@@ -43,6 +44,14 @@ public record AiPaymentNotifyRequest(
     string? PaymentMethod,
     string? ImageBase64,
     decimal? ExpectedAmount);
+
+public record AiOrderNotifyRequest(
+    string OrderId,
+    string? CustomerName,
+    string? CustomerEmail,
+    string? CustomerPhone,
+    decimal Amount,
+    string? ProductName);
 
 public class AiBackendClient(
     HttpClient http,
@@ -85,6 +94,14 @@ public class AiBackendClient(
         return new AiPaymentNotifyResponse(
             MapValidation(response.Data.Ai),
             response.Data.Notifications);
+    }
+
+    public async Task<AiPaymentNotifyResponse?> NotifyOrderEmailAsync(AiOrderNotifyRequest request, CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        var response = await PostAsync<AiApiWrapper<AiPaymentNotifyData>>("/api/notify/order", request, ct);
+        if (response?.Data is null) return null;
+        return new AiPaymentNotifyResponse(null, response.Data.Notifications);
     }
 
     public async Task<bool> IsAiReadyAsync(CancellationToken ct = default)

@@ -260,8 +260,8 @@ public class PaymentService(
                 imageBase64,
                 expectedTotal), ct);
 
-            notifyNote = SummarizeNotifyResult(notify);
-            whatsappSent = notifyNote?.Contains("WhatsApp: haa", StringComparison.OrdinalIgnoreCase) == true;
+            notifyNote = SummarizeEmailNotifyResult(notify);
+            whatsappSent = false;
         }
 
         var emailSent = emailResult?.Success == true;
@@ -289,15 +289,13 @@ public class PaymentService(
             notifyNote);
     }
 
-    private static string? SummarizeNotifyResult(AiPaymentNotifyResponse? notify)
+    private static string? SummarizeEmailNotifyResult(AiPaymentNotifyResponse? notify)
     {
-        if (notify?.Notifications is null) return "Node.js notify: jawaab ma helin";
+        if (notify?.Notifications is null) return "Email Node: jawaab ma helin — hubi Node.js + EMAIL_PASS .env";
         var json = notify.Notifications.Value.GetRawText();
-        var waOk = json.Contains("\"sent\":true", StringComparison.OrdinalIgnoreCase);
-        var emailOk = json.Contains("customerEmail", StringComparison.OrdinalIgnoreCase) && waOk;
-        if (!waOk)
-            return "WhatsApp/Email Node: ma configured — geli .env (WHATSAPP_TOKEN, EMAIL_PASS)";
-        return "WhatsApp: haa · Email Node: hubi .env";
+        if (json.Contains("\"sent\":true", StringComparison.OrdinalIgnoreCase))
+            return "Email macmiil waa la diray (Order ID + lambarka raadinta + lacagta)";
+        return "Email lama dirin — geli EMAIL_PASS Gmail .env";
     }
 
     private async Task SyncOrderFromPaymentAsync(Order order, Payment payment, string by, CancellationToken ct)
