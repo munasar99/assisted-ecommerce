@@ -60,6 +60,12 @@ public class AiBackendClient(
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
+    private static readonly JsonSerializerOptions PostJsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
+
     public bool IsEnabled => options.Value.IsConfigured;
 
     public async Task<AiChatResponse?> SendChatMessageAsync(string message, string? sessionId, CancellationToken ct = default)
@@ -161,7 +167,7 @@ public class AiBackendClient(
     {
         try
         {
-            var res = await http.PostAsJsonAsync(path, payload, ct);
+            var res = await http.PostAsJsonAsync(path, payload, PostJsonOpts, ct);
             if (!res.IsSuccessStatusCode)
             {
                 var body = await res.Content.ReadAsStringAsync(ct);

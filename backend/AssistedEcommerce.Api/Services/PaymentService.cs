@@ -242,6 +242,7 @@ public class PaymentService(
             order.OrderId,
             order.CustomerEmail,
             order.CustomerFullName,
+            order.CustomerPhone,
             expectedTotal,
             ct);
 

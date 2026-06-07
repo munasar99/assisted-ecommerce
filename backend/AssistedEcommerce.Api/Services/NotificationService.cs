@@ -24,6 +24,7 @@ public interface INotificationService
         string orderId,
         string? customerEmail,
         string? customerName,
+        string? customerPhone,
         decimal totalAmountUsd,
         CancellationToken ct = default);
 
@@ -32,6 +33,7 @@ public interface INotificationService
         string orderId,
         string? customerEmail,
         string? customerName,
+        string? customerPhone,
         decimal totalAmountUsd,
         CancellationToken ct = default);
 }
@@ -88,6 +90,7 @@ public class NotificationService(
         string orderId,
         string? customerEmail,
         string? customerName,
+        string? customerPhone,
         decimal totalAmountUsd,
         CancellationToken ct = default)
     {
@@ -105,6 +108,7 @@ public class NotificationService(
         return await SendTemplatedAsync(
             customerEmail,
             customerName,
+            customerPhone,
             orderId,
             _resend.Templates.OrderCreatedSubject,
             _resend.Templates.OrderCreatedHtml,
@@ -116,6 +120,7 @@ public class NotificationService(
         string orderId,
         string? customerEmail,
         string? customerName,
+        string? customerPhone,
         decimal totalAmountUsd,
         CancellationToken ct = default)
     {
@@ -145,6 +150,7 @@ public class NotificationService(
         return await SendTemplatedAsync(
             customerEmail,
             customerName,
+            customerPhone,
             orderId,
             _resend.Templates.OrderSubmittedSubject,
             _resend.Templates.OrderSubmittedHtml,
@@ -155,6 +161,7 @@ public class NotificationService(
     private async Task<EmailSendResult> SendTemplatedAsync(
         string customerEmail,
         string? customerName,
+        string? customerPhone,
         string orderId,
         string subjectTemplate,
         string bodyTemplate,
@@ -169,12 +176,16 @@ public class NotificationService(
         }
 
         var name = string.IsNullOrWhiteSpace(customerName) ? "Macmiil" : customerName.Trim();
+        var phone = string.IsNullOrWhiteSpace(customerPhone) ? "—" : customerPhone.Trim();
         var total = $"${totalAmountUsd:F2}";
+        var trackUrl = $"{_resend.FrontendUrl.TrimEnd('/')}/track";
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["customerName"] = name,
+            ["customerPhone"] = phone,
             ["orderId"] = orderId,
             ["totalAmount"] = total,
+            ["trackUrl"] = trackUrl,
             ["brandName"] = _resend.BrandName,
             ["supportPhone"] = _resend.SupportPhone,
             ["supportEmail"] = _resend.SupportEmail,

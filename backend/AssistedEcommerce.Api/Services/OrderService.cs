@@ -81,6 +81,7 @@ public class OrderService(
             pricing.ServiceFeePerItemUsd);
 
         var user = await userService.FindOrCreateByPhoneAsync(request.FullName, request.Phone, ct);
+        var customerPhone = UserService.NormalizePhone(request.Phone);
 
         string? aiValidationStatus = null;
         string? aiValidationMessage = null;
@@ -131,7 +132,7 @@ public class OrderService(
             OrderId = orderId,
             UserId = user.UserId,
             CustomerFullName = request.FullName.Trim(),
-            CustomerPhone = user.Phone,
+            CustomerPhone = customerPhone,
             CustomerEmail = OrderFormSecurityValidator.NormalizeEmail(request.Email),
             ProductUrl = request.ProductUrl.Trim(),
             ProductName = request.ProductName?.Trim(),
@@ -175,6 +176,7 @@ public class OrderService(
             order.OrderId,
             order.CustomerEmail,
             order.CustomerFullName,
+            order.CustomerPhone,
             order.TotalAmountUsd,
             ct);
 

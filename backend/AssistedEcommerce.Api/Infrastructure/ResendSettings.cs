@@ -28,6 +28,9 @@ public class ResendSettings
 
     public string SupportEmail { get; set; } = "E-commerce@gmi.so";
 
+    /// <summary>Frontend URL for /track link in emails.</summary>
+    public string FrontendUrl { get; set; } = "http://localhost:5173";
+
     public ResendEmailTemplates Templates { get; set; } = new();
 
     /// <summary>
