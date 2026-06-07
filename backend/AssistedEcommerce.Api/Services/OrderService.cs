@@ -82,7 +82,10 @@ public class OrderService(
 
         var user = await userService.FindOrCreateByPhoneAsync(request.FullName, request.Phone, ct);
 
-        if (aiBackend.IsEnabled && await aiBackend.IsAiReadyAsync(ct))
+        string? aiValidationStatus = null;
+        string? aiValidationMessage = null;
+
+        if (aiBackend.IsEnabled)
         {
             var imageBase64 = !string.IsNullOrWhiteSpace(request.OrderScreenshotBase64)
                 ? request.OrderScreenshotBase64.Trim()
@@ -95,8 +98,14 @@ public class OrderService(
                 request.Phone.Trim(),
                 imageBase64), ct);
 
-            if (aiResult is not null && string.Equals(aiResult.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
-                throw new ApiException(aiResult.Message ?? "Order-ka AI-gu wuu diiday. Fadlan xogta sax ah geli.");
+            if (aiResult is null)
+                throw new ApiException("AI backend ma jawaabin — hubi in Node.js uu socdo (port 3001).");
+
+            aiValidationStatus = aiResult.Status;
+            aiValidationMessage = aiResult.Message;
+
+            if (string.Equals(aiResult.Status, "REJECTED", StringComparison.OrdinalIgnoreCase))
+                throw new ApiException(aiResult.Message ?? "Order-ka waa la diiday — link, sawir, ama lacag ma saxna.");
         }
 
         var orderId = await idGenerator.NextOrderIdAsync(user.UserId, ct);
@@ -206,7 +215,9 @@ public class OrderService(
             order.InvoiceId,
             order.Status,
             emailSent,
-            emailError);
+            emailError,
+            aiValidationStatus,
+            aiValidationMessage);
     }
 
     public async Task<OrderDetailDto> TrackOrderAsync(string orderId, string phone, CancellationToken ct = default)

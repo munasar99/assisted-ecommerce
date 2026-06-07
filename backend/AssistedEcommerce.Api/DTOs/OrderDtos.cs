@@ -31,7 +31,9 @@ public record CreateOrderResponse(
     string? InvoiceId,
     string Status,
     bool EmailSent = false,
-    string? EmailError = null);
+    string? EmailError = null,
+    string? AiValidationStatus = null,
+    string? AiValidationMessage = null);
 
 public record TrackOrderRequest(string OrderId, string Phone);
 
