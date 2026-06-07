@@ -14,6 +14,7 @@ namespace AssistedEcommerce.Api.Controllers;
 public class NotificationsController(
     IEmailService emailService,
     INotificationService notificationService,
+    IAiBackendClient aiBackend,
     IOptions<ResendSettings> resendOptions) : ControllerBase
 {
     /// <summary>POST test Resend — POST /api/notifications/email/test</summary>
@@ -54,6 +55,40 @@ public class NotificationsController(
         return Ok(new ApiResponse<SendEmailResponse>(
             true,
             new SendEmailResponse(result.MessageId ?? "ok", orderId, "Order notification")));
+    }
+
+    /// <summary>GET preview — meesha Email/WhatsApp loo diro (ASP.NET Resend + Node.js AI).</summary>
+    [HttpGet("preview")]
+    public async Task<ActionResult<ApiResponse<object>>> Preview(CancellationToken ct)
+    {
+        var s = resendOptions.Value;
+        var nodePreview = await aiBackend.GetNotifyPreviewAsync(ct);
+
+        return Ok(new ApiResponse<object>(true, new
+        {
+            aspNetResend = new
+            {
+                when = new[]
+                {
+                    "Order create → email macmiil (haddii Resend configured)",
+                    "Payment submit → email macmiil",
+                    "Status beddel → email macmiil"
+                },
+                sentTo = "Email-ka macmiilku form-ka ku qoray",
+                fromEmail = s.FromEmail,
+                fromName = s.FromName,
+                supportPhone = s.SupportPhone,
+                supportEmail = s.SupportEmail,
+                configured = s.IsConfigured,
+                sendOnOrderCreated = s.SendEmailOnOrderCreated,
+                sendOnPaymentSubmitted = s.SendEmailOnPaymentSubmitted,
+                orderCreatedPreview = "Salam {customerName}, Dalabkaaga {orderId} waa la helay. Wadarta: {totalAmount}",
+                orderSubmittedPreview = "Salam {customerName}, Dalabkaaga iyo lacagtaada waa la helay. Order: {orderId}",
+                statusPreview = "Dalabkaaga {orderId} wuxuu hadda yahay: {statusLabel}"
+            },
+            nodeJsAi = nodePreview,
+            note = "Node.js: Payment submit → 4 fariin (Email macmiil + admin, WhatsApp macmiil + admin). Order submit: Node.js fariin ma dirto."
+        }));
     }
 
     /// <summary>GET Resend config (no secrets).</summary>

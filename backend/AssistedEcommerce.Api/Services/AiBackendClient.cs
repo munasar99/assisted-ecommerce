@@ -13,6 +13,7 @@ public interface IAiBackendClient
     Task<AiValidationResponse?> VerifyReceiptAsync(AiReceiptVerificationRequest request, CancellationToken ct = default);
     Task<AiPaymentNotifyResponse?> NotifyPaymentAsync(AiPaymentNotifyRequest request, CancellationToken ct = default);
     Task<bool> HealthCheckAsync(CancellationToken ct = default);
+    Task<JsonElement?> GetNotifyPreviewAsync(CancellationToken ct = default);
 }
 
 public record AiChatResponse(string Reply, string? Provider, string? SessionId);
@@ -97,6 +98,26 @@ public class AiBackendClient(
         {
             logger.LogWarning(ex, "AI Backend health check failed");
             return false;
+        }
+    }
+
+    public async Task<JsonElement?> GetNotifyPreviewAsync(CancellationToken ct = default)
+    {
+        if (!IsEnabled) return null;
+        try
+        {
+            var res = await http.GetAsync("/api/notify/preview", ct);
+            if (!res.IsSuccessStatusCode) return null;
+            await using var stream = await res.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            if (doc.RootElement.TryGetProperty("data", out var data))
+                return data.Clone();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "AI Backend notify preview failed");
+            return null;
         }
     }
 
