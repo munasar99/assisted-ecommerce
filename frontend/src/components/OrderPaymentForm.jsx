@@ -46,15 +46,15 @@ export default function OrderPaymentForm({ orderId, phone, order, onSuccess }) {
       const result = await paymentsApi.upload(fd);
       await qc.invalidateQueries({ queryKey: ["track", orderId, phone] });
       show("Lacagta waa la helay — waad ku mahadsan tahay!", "success");
-      if (result?.emailSent) {
+      if (result?.emailSent || result?.notifyNote?.includes("waa la diray")) {
         setTimeout(
-          () => show("Email xaqiijin ah ayaa loo diray cinwaankaaga.", "success"),
+          () => show("Email ayaa loo diray — Order ID, lambarka raadinta, iyo lacagta.", "success"),
           500,
         );
-      } else if (result?.emailError) {
+      } else if (result?.emailError || result?.notifyNote) {
         setTimeout(
           () =>
-            show(`Email lama dirin: ${result.emailError}`, "error"),
+            show(`Email: ${result.emailError || result.notifyNote}`, "error"),
           600,
         );
       }
