@@ -126,7 +126,41 @@ body {
 }
 
 .input-field {
-  @apply w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/15;
+  @apply w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-chat-fab {
+  @apply fixed bottom-6 left-6 z-50 flex h-14 min-w-14 items-center justify-center rounded-full bg-brand-600 px-4 text-sm font-bold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700;
+}
+
+.ai-chat-panel {
+  @apply fixed bottom-24 left-6 z-50 flex h-[min(420px,70vh)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl;
+}
+
+.ai-chat-header {
+  @apply flex items-center justify-between border-b border-slate-100 px-4 py-3;
+}
+
+.ai-chat-messages {
+  @apply flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3;
+}
+
+.ai-chat-bubble {
+  @apply max-w-[92%] break-words rounded-2xl px-3 py-2 text-sm;
+}
+
+.ai-chat-bubble.is-user {
+  @apply ml-auto bg-brand-600 text-white;
+}
+
+.ai-chat-bubble.is-bot {
+  @apply mr-auto bg-slate-100 text-slate-800;
+}
+
+.ai-chat-input-row {
+  @apply flex gap-2 border-t border-slate-100 p-3;
 }
 
 .btn-primary {

@@ -109,9 +109,22 @@ export default function OrderPage() {
       e.productPrice = "Geli qiimaha alaabta";
     else if (price > ORDER_FORM_MAX_PRICE_USD)
       e.productPrice = `Qiimaha ugu badan waa $${ORDER_FORM_MAX_PRICE_USD}`;
+    if (!screenshot) e.screenshot = "Soo geli sawir alaabta — AI wuxuu barbar dhigaa sawirka iyo link-ka";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
+
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = reader.result;
+        if (typeof data !== "string") return reject(new Error("Sawir lama akhrin"));
+        resolve(data.split(",")[1] || "");
+      };
+      reader.onerror = () => reject(new Error("Sawir lama akhrin"));
+      reader.readAsDataURL(file);
+    });
 
   const submit = async (e) => {
     e.preventDefault();
@@ -120,13 +133,13 @@ export default function OrderPage() {
     submittingRef.current = true;
     setLoading(true);
     try {
-      let orderScreenshotUrl;
-      if (screenshot) {
-        const fd = new FormData();
-        fd.append("file", screenshot);
-        const up = await uploadsApi.orderScreenshot(fd);
-        orderScreenshotUrl = up.url;
-      }
+      const imageBase64 = await fileToBase64(screenshot);
+
+      const fd = new FormData();
+      fd.append("file", screenshot);
+      const up = await uploadsApi.orderScreenshot(fd);
+      const orderScreenshotUrl = up.url;
+
       const payload = {
         fullName: form.fullName,
         phone: form.phone,
@@ -138,6 +151,7 @@ export default function OrderPage() {
         deliveryType: form.deliveryType,
         notes: form.notes || undefined,
         orderScreenshotUrl,
+        orderScreenshotBase64: imageBase64,
       };
 
       if (homeDelivery) {
@@ -180,7 +194,7 @@ export default function OrderPage() {
 
   return (
     <PageShell title={BRAND.name} subtitle={BRAND.tagline} centered>
-      <form onSubmit={submit} className="card-elevated space-y-5 p-6 sm:p-8">
+      <form onSubmit={submit} className="card-elevated mx-auto max-w-full space-y-5 overflow-hidden p-6 sm:p-8">
         <Field label="Magaca oo buuxa" error={errors.fullName}>
           <input
             className={inputCls}
@@ -217,7 +231,7 @@ export default function OrderPage() {
         </Field>
         <Field label="Link alaabta (Alibaba/Amazon)" error={errors.productUrl}>
           <input
-            className={inputCls}
+            className={`${inputCls} break-all`}
             placeholder="product link"
             value={form.productUrl}
             onChange={(e) => set("productUrl", e.target.value)}
@@ -251,12 +265,13 @@ export default function OrderPage() {
           />
         </Field>
         <UploadInput
-          label="Sawir alaabta (optional)"
+          label="Sawir alaabta (required — AI xaqiijin)"
           onChange={(f, err) => {
             setScreenshot(f);
             setScreenshotErr(err || "");
+            if (f) setErrors((e) => ({ ...e, screenshot: undefined }));
           }}
-          error={screenshotErr}
+          error={screenshotErr || errors.screenshot}
         />
 
         <Field

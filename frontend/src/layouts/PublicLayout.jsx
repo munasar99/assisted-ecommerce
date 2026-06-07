@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import WhatsAppFloat from "../components/WhatsAppFloat";
+import AiChatWidget from "../components/AiChatWidget";
 
 export default function PublicLayout() {
   return (
@@ -12,6 +13,7 @@ export default function PublicLayout() {
       </main>
       <Footer />
       <WhatsAppFloat />
+      <AiChatWidget />
     </div>
   );
 }

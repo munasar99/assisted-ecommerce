@@ -58,6 +58,11 @@ export const uploadsApi = {
   orderScreenshot: (formData) => api.post("/uploads/order", formData).then(unwrap),
 };
 
+export const chatApi = {
+  message: (body) => api.post("/chat/message", body).then(unwrap),
+  validateOrder: (body) => api.post("/chat/validate-order", body, { timeout: 90_000 }).then(unwrap),
+};
+
 export const notificationsApi = {
   emailStatus: () => api.get("/notifications/email/status").then(unwrap),
   preview: () => api.get("/notifications/preview").then(unwrap),
