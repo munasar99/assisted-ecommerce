@@ -52,6 +52,7 @@ builder.Services.Configure<UploadSettings>(builder.Configuration.GetSection(Uplo
 builder.Services.Configure<PricingSettings>(builder.Configuration.GetSection(PricingSettings.SectionName));
 builder.Services.Configure<OrderFormSecuritySettings>(builder.Configuration.GetSection(OrderFormSecuritySettings.SectionName));
 builder.Services.Configure<PaymentVerificationSettings>(builder.Configuration.GetSection(PaymentVerificationSettings.SectionName));
+builder.Services.Configure<PaymentsSettings>(builder.Configuration.GetSection(PaymentsSettings.SectionName));
 builder.Services.AddOptions<ResendSettings>()
     .Bind(builder.Configuration.GetSection(ResendSettings.SectionName))
     .PostConfigure(o =>

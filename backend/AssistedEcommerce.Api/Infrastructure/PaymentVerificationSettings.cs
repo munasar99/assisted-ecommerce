@@ -32,4 +32,7 @@ public class PaymentVerificationSettings
     public bool RequireDateInImage { get; set; } = false;
 
     public bool RequireTimeInImage { get; set; } = false;
+
+    /// <summary>Hubi lambarka la diray (tusaale 613508774) screenshot-ka.</summary>
+    public bool VerifyRecipientNumber { get; set; } = true;
 }
