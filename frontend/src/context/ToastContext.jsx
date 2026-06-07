@@ -14,16 +14,19 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={{ show }}>
       {children}
       {toast && (
-        <div
-          className={`fixed bottom-4 right-4 z-50 max-w-sm rounded-xl px-4 py-3 text-sm font-medium shadow-lg text-white ${
-            toast.type === "error"
-              ? "bg-red-600"
-              : toast.type === "success"
-                ? "bg-emerald-600"
-                : "bg-slate-800"
-          }`}
-        >
-          {toast.message}
+        <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div
+            className={`pointer-events-auto max-w-md rounded-2xl px-6 py-4 text-center text-base font-semibold leading-snug shadow-2xl text-white ${
+              toast.type === "error"
+                ? "bg-red-600"
+                : toast.type === "success"
+                  ? "bg-emerald-600"
+                  : "bg-slate-800"
+            }`}
+            role="status"
+          >
+            {toast.message}
+          </div>
         </div>
       )}
     </ToastContext.Provider>

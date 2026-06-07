@@ -46,9 +46,9 @@ export default function OrderPaymentForm({ orderId, phone, order, onSuccess }) {
       const result = await paymentsApi.upload(fd);
       await qc.invalidateQueries({ queryKey: ["track", orderId, phone] });
       show("Lacagta waa la helay — waad ku mahadsan tahay!", "success");
-      if (result?.emailSent || result?.notifyNote?.includes("waa la diray")) {
+      if (result?.emailSent) {
         setTimeout(
-          () => show("Email ayaa loo diray — Order ID, lambarka raadinta, iyo lacagta.", "success"),
+          () => show(`Email ayaa kuso dhacayo ${orderId} ${phone}`, "success"),
           500,
         );
       } else if (result?.emailError || result?.notifyNote) {

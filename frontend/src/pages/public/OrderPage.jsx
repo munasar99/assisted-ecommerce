@@ -109,7 +109,7 @@ export default function OrderPage() {
       e.productPrice = "Geli qiimaha alaabta";
     else if (price > ORDER_FORM_MAX_PRICE_USD)
       e.productPrice = `Qiimaha ugu badan waa $${ORDER_FORM_MAX_PRICE_USD}`;
-    if (!screenshot) e.screenshot = "Soo geli sawir alaabta — AI wuxuu barbar dhigaa sawirka iyo link-ka";
+    if (!screenshot) e.screenshot = "Soo geli sawir alaabta";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -163,25 +163,11 @@ export default function OrderPage() {
 
       const result = await ordersApi.create(payload);
 
-      const aiStatus = (result?.aiValidationStatus || "").toUpperCase();
-      if (aiStatus === "VALID") {
+      if (result?.emailSent) {
         show(
-          result?.aiValidationMessage ||
-            "AI wuu xaqiijiyay: link, sawir, iyo lacagta waa is waafaqsan yihiin.",
+          `Email ayaa kuso dhacayo ${result.orderId} ${form.phone.trim()}`,
           "success",
         );
-      } else if (aiStatus === "WARNING") {
-        show(
-          result?.aiValidationMessage ||
-            "Qaabka aasaasiga ah waa la hubiyay — AI buuxa ma jirto (API key geli backend/.env).",
-          "error",
-        );
-      } else if (result?.aiValidationMessage) {
-        show(result.aiValidationMessage, "success");
-      }
-
-      if (result?.emailSent) {
-        show("Dalabka waa la helay — email ayaa loo diray cinwaankaaga.", "success");
       } else if (result?.emailError) {
         show(`Dalabka waa la helay, laakiin email: ${result.emailError}`, "error");
       }
@@ -282,7 +268,7 @@ export default function OrderPage() {
           />
         </Field>
         <UploadInput
-          label="Sawir alaabta (required — AI xaqiijin)"
+          label="Sawir alaabta (required)"
           onChange={(f, err) => {
             setScreenshot(f);
             setScreenshotErr(err || "");
@@ -402,7 +388,7 @@ export default function OrderPage() {
           disabled={loading}
           className="btn-primary w-full !py-3.5 text-base font-semibold"
         >
-          {loading ? "AI wuxuu hubinayaa link, sawir, lacagta..." : "Send"}
+          {loading ? "Waa la dirayaa..." : "Send"}
         </button>
       </form>
     </PageShell>

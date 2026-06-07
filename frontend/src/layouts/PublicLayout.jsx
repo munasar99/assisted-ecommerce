@@ -12,8 +12,10 @@ export default function PublicLayout() {
         <Outlet />
       </main>
       <Footer />
-      <WhatsAppFloat />
-      <AiChatWidget />
+      <div className="floating-actions">
+        <AiChatWidget />
+        <WhatsAppFloat />
+      </div>
     </div>
   );
 }

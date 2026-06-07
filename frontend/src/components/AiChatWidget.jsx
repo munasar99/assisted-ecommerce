@@ -1,17 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { chatApi } from "../api/endpoints";
+import AiAssistantIcon from "./AiAssistantIcon";
 
 const SESSION_KEY = "aiChatSessionId";
+
+const QUICK_QUESTIONS = [
+  "Sidee delivery u sameeyaa?",
+  "Sidee lacag u bixiyaa?",
+  "Sideen dalabka u raadiyaa?",
+  "Sidee order u sameeyaa?",
+];
+
+const WELCOME =
+  "Salaan! Waxaan si toos ah kuu caawin karaa delivery, lacag bixinta, raadinta dalabka, iyo sida order loo sameeyo.\n\nRiix su'aal hoose ama qor su'aashaada.";
 
 function newSessionId() {
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function cleanReply(text) {
+  let reply = text ?? "Jawaab lama helin.";
+  try {
+    const parsed = JSON.parse(reply);
+    if (parsed.message) reply = parsed.message;
+  } catch {
+    /* plain text */
+  }
+  return reply.replace(/\*\*(.+?)\*\*/g, "$1");
+}
+
 export default function AiChatWidget() {
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: "assistant", text: "Salaan! Sideen kuu caawin karaa? Su'aal dalab, lacag bixinta, ama delivery." },
-  ]);
+  const [messages, setMessages] = useState([{ role: "assistant", text: WELCOME }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => sessionStorage.getItem(SESSION_KEY) || newSessionId());
@@ -21,53 +43,68 @@ export default function AiChatWidget() {
     sessionStorage.setItem(SESSION_KEY, sessionId);
   }, [sessionId]);
 
+  // Bog kale → chat is xir
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, open]);
+  }, [messages, open, loading]);
 
-  const send = async (e) => {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput("");
-    setMessages((m) => [...m, { role: "user", text }]);
-    setLoading(true);
-    try {
-      const res = await chatApi.message({ message: text, sessionId });
-      let reply = res?.reply ?? "Jawaab lama helin.";
+  const askQuestion = useCallback(
+    async (text) => {
+      const q = text?.trim();
+      if (!q || loading) return;
+      setInput("");
+      setMessages((m) => [...m, { role: "user", text: q }]);
+      setLoading(true);
       try {
-        const parsed = JSON.parse(reply);
-        if (parsed.message) reply = parsed.message;
-      } catch {
-        /* plain text */
+        const res = await chatApi.message({ message: q, sessionId });
+        const reply = cleanReply(res?.reply);
+        setMessages((m) => [...m, { role: "assistant", text: reply }]);
+      } catch (err) {
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            text:
+              err.message ||
+              "Chat ma shaqeynayo. Hubi in Node.js uu socdo (port 3001) iyo ASP.NET (5298).",
+          },
+        ]);
+      } finally {
+        setLoading(false);
       }
-      setMessages((m) => [...m, { role: "assistant", text: reply }]);
-    } catch (err) {
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", text: err.message || "Chat ma shaqeynayo. Hubi Node.js + API keys." },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    },
+    [loading, sessionId],
+  );
+
+  const send = (e) => {
+    e.preventDefault();
+    askQuestion(input);
   };
+
+  const showQuick = messages.length <= 2 && !loading;
 
   return (
     <>
       <button
         type="button"
-        className="ai-chat-fab"
-        aria-label="AI Chat"
-        onClick={() => setOpen((o) => !o)}
+        className={`ai-chat-fab group ${open ? "ai-chat-fab-active" : ""}`}
+        aria-label="Caawiye AI"
+        aria-expanded={open}
+        title="Caawiye — weydii su'aal"
+        onClick={() => setOpen(true)}
       >
-        {open ? "✕" : "💬 AI"}
+        <AiAssistantIcon />
       </button>
 
       {open && (
         <div className="ai-chat-panel">
           <div className="ai-chat-header">
-            <strong>Caawiye AI</strong>
-            <span className="text-xs text-slate-500">Af-Soomaali</span>
+            <strong>Caawiye</strong>
+            <span className="text-xs text-slate-500">Jawaab toos ah</span>
           </div>
           <div className="ai-chat-messages">
             {messages.map((m, i) => (
@@ -75,6 +112,21 @@ export default function AiChatWidget() {
                 {m.text}
               </div>
             ))}
+            {showQuick && (
+              <div className="ai-chat-quick">
+                {QUICK_QUESTIONS.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    className="ai-chat-quick-btn"
+                    disabled={loading}
+                    onClick={() => askQuestion(q)}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
             {loading && <div className="ai-chat-bubble is-bot text-slate-400">Waa la qorayaa...</div>}
             <div ref={bottomRef} />
           </div>
